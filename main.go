@@ -57,8 +57,9 @@ type ServoConfig struct {
 
 // CalibrationConfig has values for the moving parts that depend on positioning and motor specifics
 type CalibrationConfig struct {
-	ServoBasePosition  uint
-	ServoClickPosition uint
+	ServoBasePosition  int
+	ServoClickPosition int
+	ServoPressDelay    time.Duration
 	StepsPerIncrement  uint
 	BacklashSteps      uint
 }
@@ -98,14 +99,32 @@ func NewState(stepperCfg easystepper.DeviceConfig, servoCfg ServoConfig, calibra
 
 // ClickButton uses the servo motor to click the FreshRoast button to enable setting changes
 func (s *State) ClickButton() ControlMode {
-	// TODO: implement
+	err := s.servo.SetAngle(s.calibrationCfg.ServoClickPosition)
+	if err != nil {
+		println("error setting servo angle:", err.Error())
+		return s.currentControlMode
+	}
+
+	time.Sleep(s.calibrationCfg.ServoPressDelay)
+
+	err = s.servo.SetAngle(s.calibrationCfg.ServoBasePosition)
+	if err != nil {
+		println("error resetting servo angle:", err.Error())
+		return s.currentControlMode
+	}
+
 	s.currentControlMode = s.currentControlMode.Next()
 	return s.currentControlMode
 }
 
 // GoToMode will click the FreshRoast button until the target ControlMode is active
 func (s *State) GoToMode(target ControlMode) {
-	// TODO: Implement
+	if target == ControlModeUnknown {
+		return
+	}
+	for s.currentControlMode != target {
+		_ = s.ClickButton()
+	}
 }
 
 // FixControlMode manually sets the ControlMode to account for errors
@@ -115,26 +134,49 @@ func (s *State) FixControlMode(cm ControlMode) {
 
 // MoveFan controls the FreshRoast to move the fan value by the specified number of increments and returns the state.
 // If this exceeds the bounds, it will still move by the number of increments, but still returns the actual current value.
-func (s *State) MoveFan(i int) uint {
+func (s *State) MoveFan(i int32) uint {
 	println("MoveFan", i)
-	// TODO: GoToMode(Fan)
-	// TODO: move correct number of increments
+
+	s.GoToMode(ControlModeFan)
+	s.move(i)
+
+	fan := int32(s.fan) + i
+	if fan < 1 {
+		fan = 1
+	} else if fan > 9 {
+		fan = 9
+	}
+	s.fan = uint(fan)
+
 	return s.fan
 }
 
 // MovePower controls the FreshRoast to move the power value by the specified number of increments and returns the state.
 // If this exceeds the bounds, it will still move by the number of increments, but still returns the actual current value.
-func (s *State) MovePower(i int) uint {
-	// TODO: GoToMode(Power)
-	// TODO: move correct number of increments
+func (s *State) MovePower(i int32) uint {
+	println("MovePower", i)
+
+	s.GoToMode(ControlModePower)
+	s.move(i)
+
+	power := int32(s.power) + i
+	if power < 1 {
+		power = 1
+	} else if power > 9 {
+		power = 9
+	}
+	s.power = uint(power)
+
 	return s.power
 }
 
 // MoveTimer controls the FreshRoast to move the timer value by the specified number of increments.
 // If this exceeds the bounds, it will still move by the number of increments.
-func (s *State) MoveTimer(i int) {
-	// TODO: GoToMode(Timer)
-	// TODO: move correct number of increments
+func (s *State) MoveTimer(i int32) {
+	println("MoveTimer", i)
+
+	s.GoToMode(ControlModeTimer)
+	s.move(i)
 }
 
 // FixPower manually sets the current power to the specified value to account for errors. It does not control the device
@@ -150,12 +192,39 @@ func (s *State) FixFan(f uint) {
 // SetFan sets the FreshRoast fan to the specified value
 func (s *State) SetFan(f uint) {
 	println("SetFan", f)
-	// TODO: calculate diff and call MoveFan
+	if f < 1 || f > 9 {
+		return
+	}
+
+	delta := f - s.fan
+	s.MoveFan(int32(delta))
 }
 
 // SetPower sets the FreshRoast power to the specified value
 func (s *State) SetPower(p uint) {
-	// TODO: calculate diff and call MovePower
+	println("SetPower", p)
+	if p < 1 || p > 9 {
+		return
+	}
+
+	delta := p - s.power
+	s.MovePower(int32(delta))
+}
+
+// move simply moves the stepper by the specified number of increments
+func (s *State) move(n int32) {
+	move := n * int32(s.calibrationCfg.StepsPerIncrement)
+
+	// add or subtract backlash steps based on direction change
+	if s.lastDirection < 0 && move > 0 {
+		move += int32(s.calibrationCfg.BacklashSteps)
+		s.lastDirection = +1
+	} else if s.lastDirection > 0 && move < 0 {
+		move -= int32(s.calibrationCfg.BacklashSteps)
+		s.lastDirection = -1
+	}
+
+	s.stepper.Move(move)
 }
 
 func main() {
@@ -172,6 +241,7 @@ func main() {
 	calibrationCfg := CalibrationConfig{
 		ServoBasePosition:  10,
 		ServoClickPosition: 30,
+		ServoPressDelay:    175 * time.Millisecond,
 		StepsPerIncrement:  61,
 		BacklashSteps:      2,
 	}
