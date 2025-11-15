@@ -7,20 +7,28 @@ import (
 
 type Command struct {
 	Flag byte
-	Run  func(*State, []byte) error
+	// TODO: add configs so all input parsing can be done externally?
+	// InputSize uint
+	// InputType string
+	Run func(*State, []byte) error
 }
 
 var SetFanCommand = Command{
 	Flag: 'F',
 	Run: func(s *State, input []byte) error {
-		f := b2i(input[0])
-		if f <= 0 || f > 9 {
-			return errors.New("invalid input: " + string(input))
+		switch in := input[0]; in {
+		case '-':
+			s.MoveFan(-1)
+		case '+':
+			s.MoveFan(+1)
+		default:
+			f := b2i(in)
+			if f <= 0 || f > 9 {
+				return errors.New("invalid input: " + string(input))
+			}
+
+			s.SetFan(uint(f))
 		}
-
-		println("running SetFan:", f)
-		s.SetFan(uint(f))
-
 		return nil
 	},
 }
@@ -41,7 +49,6 @@ func RunCommands(s *State) {
 		if len(input) != 2 {
 			continue
 		}
-		println("Input:", string(input))
 
 		cmd, ok := cmdMap[input[0]]
 		if !ok {

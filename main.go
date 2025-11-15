@@ -116,6 +116,7 @@ func (s *State) FixControlMode(cm ControlMode) {
 // MoveFan controls the FreshRoast to move the fan value by the specified number of increments and returns the state.
 // If this exceeds the bounds, it will still move by the number of increments, but still returns the actual current value.
 func (s *State) MoveFan(i int) uint {
+	println("MoveFan", i)
 	// TODO: GoToMode(Fan)
 	// TODO: move correct number of increments
 	return s.fan
@@ -148,6 +149,7 @@ func (s *State) FixFan(f uint) {
 
 // SetFan sets the FreshRoast fan to the specified value
 func (s *State) SetFan(f uint) {
+	println("SetFan", f)
 	// TODO: calculate diff and call MoveFan
 }
 
