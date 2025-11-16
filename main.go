@@ -60,6 +60,7 @@ type CalibrationConfig struct {
 	ServoBasePosition  int
 	ServoClickPosition int
 	ServoPressDelay    time.Duration
+	ServoResetDelay    time.Duration
 	StepsPerIncrement  uint
 	BacklashSteps      uint
 }
@@ -74,14 +75,13 @@ func NewState(stepperCfg easystepper.DeviceConfig, servoCfg ServoConfig, calibra
 
 	var myServo servo.Servo
 	if servoCfg != (ServoConfig{}) {
-		array, err := servo.NewArray(servoCfg.PWM)
+		myServo, err = servo.New(servoCfg.PWM, servoCfg.Pin)
 		if err != nil {
-			return State{}, errors.New("error creating servo array: " + err.Error())
+			return State{}, errors.New("error creating servo: " + err.Error())
 		}
-
-		myServo, err = array.Add(servoCfg.Pin)
+		err := myServo.SetAngle(calibrationCfg.ServoBasePosition)
 		if err != nil {
-			return State{}, errors.New("error adding servo to array: " + err.Error())
+			return State{}, errors.New("error setting servo angle: " + err.Error())
 		}
 	}
 
@@ -99,6 +99,8 @@ func NewState(stepperCfg easystepper.DeviceConfig, servoCfg ServoConfig, calibra
 
 // ClickButton uses the servo motor to click the FreshRoast button to enable setting changes
 func (s *State) ClickButton() ControlMode {
+	println("ClickButton")
+
 	err := s.servo.SetAngle(s.calibrationCfg.ServoClickPosition)
 	if err != nil {
 		println("error setting servo angle:", err.Error())
@@ -113,12 +115,16 @@ func (s *State) ClickButton() ControlMode {
 		return s.currentControlMode
 	}
 
+	time.Sleep(s.calibrationCfg.ServoResetDelay)
+
 	s.currentControlMode = s.currentControlMode.Next()
 	return s.currentControlMode
 }
 
 // GoToMode will click the FreshRoast button until the target ControlMode is active
 func (s *State) GoToMode(target ControlMode) {
+	println("GoToMode:", target)
+
 	if target == ControlModeUnknown {
 		return
 	}
@@ -213,7 +219,11 @@ func (s *State) SetPower(p uint) {
 
 // move simply moves the stepper by the specified number of increments
 func (s *State) move(n int32) {
-	move := n * int32(s.calibrationCfg.StepsPerIncrement)
+	println("move:", n)
+
+	// use -n because motor is reverse
+	move := -n * int32(s.calibrationCfg.StepsPerIncrement)
+	println("move steps:", move)
 
 	// add or subtract backlash steps based on direction change
 	if s.lastDirection < 0 && move > 0 {
@@ -224,24 +234,27 @@ func (s *State) move(n int32) {
 		s.lastDirection = -1
 	}
 
+	println("move steps:", move)
 	s.stepper.Move(move)
 }
 
 func main() {
 	stepperCfg := easystepper.DeviceConfig{
-		Pin1: machine.D8, Pin2: machine.D9, Pin3: machine.D10, Pin4: machine.D11,
+		Pin1: machine.D8, Pin2: machine.D9, Pin3: machine.D11, Pin4: machine.D12,
 		StepCount: 200,
 		RPM:       50,
 		Mode:      easystepper.ModeFour,
 	}
+
 	servoCfg := ServoConfig{
-		// PWM: machine.Timer2,
-		// Pin: machine.D6,
+		PWM: machine.Timer1,
+		Pin: machine.D10,
 	}
 	calibrationCfg := CalibrationConfig{
 		ServoBasePosition:  10,
-		ServoClickPosition: 30,
-		ServoPressDelay:    175 * time.Millisecond,
+		ServoClickPosition: 65,
+		ServoPressDelay:    250 * time.Millisecond,
+		ServoResetDelay:    250 * time.Millisecond,
 		StepsPerIncrement:  61,
 		BacklashSteps:      2,
 	}
