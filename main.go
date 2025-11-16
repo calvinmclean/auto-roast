@@ -30,7 +30,7 @@ func (cm ControlMode) Next() ControlMode {
 // State controls the state of the device. It manages the Stepper and Servo motors. It also tracks the current
 // state of the FreshRoast.
 type State struct {
-	stepper        *easystepper.Device
+	stepper        *WorkingStepper
 	servo          servo.Servo
 	calibrationCfg CalibrationConfig
 
@@ -67,11 +67,10 @@ type CalibrationConfig struct {
 
 // NewState intializes the state with the provided configs
 func NewState(stepperCfg easystepper.DeviceConfig, servoCfg ServoConfig, calibrationCfg CalibrationConfig) (State, error) {
-	stepper, err := easystepper.New(stepperCfg)
+	stepper, err := NewWorkingStepper(stepperCfg)
 	if err != nil {
 		return State{}, errors.New("error creating stepper: " + err.Error())
 	}
-	stepper.Configure()
 
 	var myServo servo.Servo
 	if servoCfg != (ServoConfig{}) {
@@ -92,8 +91,8 @@ func NewState(stepperCfg easystepper.DeviceConfig, servoCfg ServoConfig, calibra
 		currentControlMode: ControlModeFan,
 		fan:                1,
 		power:              1,
-		startTime:          time.Now(),
-		lastClick:          time.Now(),
+		// startTime:          time.Now(),
+		// lastClick:          time.Now(),
 	}, nil
 }
 
@@ -221,8 +220,7 @@ func (s *State) SetPower(p uint) {
 func (s *State) move(n int32) {
 	println("move:", n)
 
-	// use -n because motor is reverse
-	move := -n * int32(s.calibrationCfg.StepsPerIncrement)
+	move := n * int32(s.calibrationCfg.StepsPerIncrement)
 	println("move steps:", move)
 
 	// add or subtract backlash steps based on direction change
@@ -241,9 +239,9 @@ func (s *State) move(n int32) {
 func main() {
 	stepperCfg := easystepper.DeviceConfig{
 		Pin1: machine.D8, Pin2: machine.D9, Pin3: machine.D11, Pin4: machine.D12,
-		StepCount: 200,
-		RPM:       50,
-		Mode:      easystepper.ModeFour,
+		// StepCount: 200,
+		// RPM:       50,
+		// Mode:      easystepper.ModeFour,
 	}
 
 	servoCfg := ServoConfig{
@@ -255,8 +253,9 @@ func main() {
 		ServoClickPosition: 65,
 		ServoPressDelay:    250 * time.Millisecond,
 		ServoResetDelay:    250 * time.Millisecond,
-		StepsPerIncrement:  61,
-		BacklashSteps:      2,
+		// StepsPerIncrement:  61,
+		StepsPerIncrement: 28,
+		BacklashSteps:     2,
 	}
 
 	state, err := NewState(stepperCfg, servoCfg, calibrationCfg)
