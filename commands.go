@@ -8,17 +8,16 @@ import (
 type Command struct {
 	Flag byte
 	// TODO: add configs so all input parsing can be done externally?
-	// InputSize uint
+	InputSize uint
 	// InputType string
 	Run func(*State, []byte) error
 }
 
 var (
 	SetFanCommand = &Command{
-		Flag: 'F',
+		Flag:      'F',
+		InputSize: 1,
 		Run: func(s *State, input []byte) error {
-			println("SetFanCommand", string(input))
-
 			switch in := input[0]; in {
 			case '-':
 				s.MoveFan(-1)
@@ -36,10 +35,9 @@ var (
 		},
 	}
 	SetPowerCommand = &Command{
-		Flag: 'P',
+		Flag:      'P',
+		InputSize: 1,
 		Run: func(s *State, input []byte) error {
-			println("SetPowerCommand", string(input))
-
 			switch in := input[0]; in {
 			case '-':
 				s.MovePower(-1)
@@ -57,10 +55,9 @@ var (
 		},
 	}
 	SetModeCommand = &Command{
-		Flag: 'M',
+		Flag:      'M',
+		InputSize: 1,
 		Run: func(s *State, input []byte) error {
-			println("SetModeCommand", string(input))
-
 			mode := ControlModeUnknown
 			switch in := input[0]; in {
 			case 'F':
@@ -75,11 +72,36 @@ var (
 		},
 	}
 	ClickCommand = &Command{
-		Flag: 'C',
+		Flag:      'C',
+		InputSize: 0,
 		Run: func(s *State, input []byte) error {
-			println("ClickCommand", string(input))
-
 			_ = s.ClickButton()
+			return nil
+		},
+	}
+	StartCommand = &Command{
+		Flag:      'S',
+		InputSize: 0,
+		Run: func(s *State, b []byte) error {
+			return s.Start()
+		},
+	}
+	DebugCommand = &Command{
+		Flag:      'D',
+		InputSize: 0,
+		Run: func(s *State, b []byte) error {
+			println("F:", s.fan)
+			println("P:", s.power)
+			println("M:", s.currentControlMode.String())
+			return nil
+		},
+	}
+	VerboseCommand = &Command{
+		Flag:      'V',
+		InputSize: 0,
+		Run: func(s *State, b []byte) error {
+			s.verbose = true
+			println("Set Verbose Mode")
 			return nil
 		},
 	}
@@ -90,7 +112,9 @@ var commands = []*Command{
 	SetPowerCommand,
 	SetModeCommand,
 	ClickCommand,
-	// TODO: Add debug and fix commands
+	StartCommand,
+	DebugCommand,
+	VerboseCommand,
 }
 
 func RunCommands(s *State) {
@@ -102,12 +126,16 @@ func RunCommands(s *State) {
 
 	for {
 		input := readLine()
-		if len(input) != 2 {
+		if len(input) == 0 {
 			continue
 		}
 
 		cmd, ok := cmdMap[input[0]]
 		if !ok {
+			continue
+		}
+
+		if uint(len(input)-1) != cmd.InputSize {
 			continue
 		}
 

@@ -19,6 +19,21 @@ const (
 	ControlModeTimer
 )
 
+func (cm ControlMode) String() string {
+	switch cm {
+	case ControlModeFan:
+		return "Fan"
+	case ControlModePower:
+		return "Power"
+	case ControlModeTimer:
+		return "Timer"
+	default:
+		fallthrough
+	case ControlModeUnknown:
+		return "Unknown"
+	}
+}
+
 // Next goes to the next mode on the FreshRoast display
 func (cm ControlMode) Next() ControlMode {
 	if cm == ControlModeTimer {
@@ -47,6 +62,8 @@ type State struct {
 	// lastDirection tells if the stepper was previously moving forwards or backwards. It is useful
 	// for backlash compensation. -1, 0, +1
 	lastDirection int
+
+	verbose bool
 }
 
 // ServoConfig has device-level values for setting up the Servo
@@ -91,14 +108,34 @@ func NewState(stepperCfg easystepper.DeviceConfig, servoCfg ServoConfig, calibra
 		currentControlMode: ControlModeFan,
 		fan:                0,
 		power:              0,
-		startTime:          time.Now(),
+		startTime:          time.Time{},
 		lastClick:          time.Time{},
+		verbose:            false,
 	}, nil
+}
+
+// Start will set the start time and ensures that everything is ready to go
+func (s *State) Start() error {
+	if s.fan == 0 || s.power == 0 {
+		return errors.New("set initial fan/power before starting")
+	}
+	s.startTime = time.Now()
+
+	println("Started...")
+
+	return nil
+}
+
+// Duration returns the duration that this has been running
+func (s *State) Duration() time.Duration {
+	return time.Since(s.startTime)
 }
 
 // ClickButton uses the servo motor to click the FreshRoast button to enable setting changes
 func (s *State) ClickButton() ControlMode {
-	println("ClickButton")
+	if s.verbose {
+		println("ClickButton")
+	}
 
 	err := s.servo.SetAngle(s.calibrationCfg.ServoClickPosition)
 	if err != nil {
@@ -122,7 +159,9 @@ func (s *State) ClickButton() ControlMode {
 
 // GoToMode will click the FreshRoast button until the target ControlMode is active
 func (s *State) GoToMode(target ControlMode) {
-	println("GoToMode:", target)
+	if s.verbose {
+		println("GoToMode:", target)
+	}
 
 	if target == ControlModeUnknown {
 		return
@@ -137,49 +176,32 @@ func (s *State) FixControlMode(cm ControlMode) {
 	s.currentControlMode = cm
 }
 
-// MoveFan controls the FreshRoast to move the fan value by the specified number of increments and returns the state.
-// If this exceeds the bounds, it will still move by the number of increments, but still returns the actual current value.
-func (s *State) MoveFan(i int32) uint {
-	println("MoveFan", i)
-
+// MoveFan controls the FreshRoast to move the fan value by the specified number of increments.
+// It does not change the "State" of the device. This is useful for fixing off-by-one movements
+func (s *State) MoveFan(i int32) {
+	if s.verbose {
+		println("MoveFan", i)
+	}
 	s.GoToMode(ControlModeFan)
 	s.move(i)
-
-	fan := int32(s.fan) + i
-	if fan < 1 {
-		fan = 1
-	} else if fan > 9 {
-		fan = 9
-	}
-	s.fan = uint(fan)
-
-	return s.fan
 }
 
-// MovePower controls the FreshRoast to move the power value by the specified number of increments and returns the state.
-// If this exceeds the bounds, it will still move by the number of increments, but still returns the actual current value.
-func (s *State) MovePower(i int32) uint {
-	println("MovePower", i)
-
+// MovePower controls the FreshRoast to move the power value by the specified number of increments.
+// It does not change the "State" of the device. This is useful for fixing off-by-one movements
+func (s *State) MovePower(i int32) {
+	if s.verbose {
+		println("MovePower", i)
+	}
 	s.GoToMode(ControlModePower)
 	s.move(i)
-
-	power := int32(s.power) + i
-	if power < 1 {
-		power = 1
-	} else if power > 9 {
-		power = 9
-	}
-	s.power = uint(power)
-
-	return s.power
 }
 
 // MoveTimer controls the FreshRoast to move the timer value by the specified number of increments.
 // If this exceeds the bounds, it will still move by the number of increments.
 func (s *State) MoveTimer(i int32) {
-	println("MoveTimer", i)
-
+	if s.verbose {
+		println("MoveTimer", i)
+	}
 	s.GoToMode(ControlModeTimer)
 	s.move(i)
 }
@@ -196,32 +218,47 @@ func (s *State) FixFan(f uint) {
 
 // SetFan sets the FreshRoast fan to the specified value
 func (s *State) SetFan(f uint) {
-	println("SetFan", f)
+	if s.verbose {
+		println("SetFan", f)
+	}
 	if f < 1 || f > 9 {
 		return
 	}
 
-	delta := f - s.fan
-	s.MoveFan(int32(delta))
+	s.fan = uint(f)
+
+	// Only actually move if started. This allows setting base values
+	if !s.startTime.IsZero() {
+		delta := f - s.fan
+		s.MoveFan(int32(delta))
+	} else if s.verbose {
+		println("Not moving since this has not started")
+	}
 }
 
 // SetPower sets the FreshRoast power to the specified value
 func (s *State) SetPower(p uint) {
-	println("SetPower", p)
+	if s.verbose {
+		println("SetPower", p)
+	}
 	if p < 1 || p > 9 {
 		return
 	}
 
-	delta := p - s.power
-	s.MovePower(int32(delta))
+	s.power = p
+
+	// Only actually move if started. This allows setting base values
+	if !s.startTime.IsZero() {
+		delta := p - s.power
+		s.MovePower(int32(delta))
+	} else if s.verbose {
+		println("Not moving since this has not started")
+	}
 }
 
 // move simply moves the stepper by the specified number of increments
 func (s *State) move(n int32) {
-	println("move:", n)
-
 	move := n * int32(s.calibrationCfg.StepsPerIncrement)
-	println("move steps:", move)
 
 	// add or subtract backlash steps based on direction change
 	if s.lastDirection < 0 && move > 0 {
@@ -232,7 +269,6 @@ func (s *State) move(n int32) {
 		s.lastDirection = -1
 	}
 
-	println("move steps:", move)
 	s.stepper.Move(move)
 }
 
@@ -266,6 +302,5 @@ func main() {
 		panic(err)
 	}
 
-	println("Ready...", time.Now().String())
 	RunCommands(&state)
 }
