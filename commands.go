@@ -90,11 +90,9 @@ var (
 		Flag:      'D',
 		InputSize: 0,
 		Run: func(s *State, b []byte) error {
-			println("F:", s.fan)
-			println("P:", s.power)
-			println("M:", s.currentControlMode.String())
-			println("StartTime:", s.startTime.String())
-			println("LastClick:", s.lastClick.String())
+			d := s.ts() + " " + levelStr("F", s.fan) + "/" + levelStr("P", s.power)
+			d += " mode=" + s.currentControlMode.String()
+			println(d)
 			return nil
 		},
 	}
@@ -103,7 +101,7 @@ var (
 		InputSize: 0,
 		Run: func(s *State, b []byte) error {
 			s.verbose = true
-			println("Set Verbose Mode")
+			println(s.ts(), "Set Verbose Mode")
 			return nil
 		},
 	}
@@ -117,6 +115,9 @@ var commands = []*Command{
 	StartCommand,
 	DebugCommand,
 	VerboseCommand,
+	// TODO: Time Command
+	// TODO: record preheat?
+	// TODO: record cooling start?
 }
 
 func RunCommands(s *State) {

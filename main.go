@@ -121,7 +121,7 @@ func (s *State) Start() error {
 	}
 	s.startTime = time.Now()
 
-	println("Started...")
+	println(s.ts(), "Started...")
 
 	return nil
 }
@@ -134,12 +134,12 @@ func (s *State) Duration() time.Duration {
 // ClickButton uses the servo motor to click the FreshRoast button to enable setting changes
 func (s *State) ClickButton() {
 	if s.verbose {
-		println("ClickButton")
+		println(s.ts(), "ClickButton")
 	}
 
 	err := s.servo.SetAngle(s.calibrationCfg.ServoClickPosition)
 	if err != nil {
-		println("error setting servo angle:", err.Error())
+		println(s.ts(), "error setting servo angle:", err.Error())
 		return
 	}
 
@@ -147,7 +147,7 @@ func (s *State) ClickButton() {
 
 	err = s.servo.SetAngle(s.calibrationCfg.ServoBasePosition)
 	if err != nil {
-		println("error resetting servo angle:", err.Error())
+		println(s.ts(), "error resetting servo angle:", err.Error())
 		return
 	}
 
@@ -158,7 +158,7 @@ func (s *State) ClickButton() {
 // GoToMode will click the FreshRoast button until the target ControlMode is active
 func (s *State) GoToMode(target ControlMode) {
 	if s.verbose {
-		println("GoToMode:", target)
+		println(s.ts(), "GoToMode:", target)
 	}
 	if target == ControlModeUnknown {
 		return
@@ -188,7 +188,7 @@ func (s *State) FixControlMode(cm ControlMode) {
 // It does not change the "State" of the device. This is useful for fixing off-by-one movements
 func (s *State) MoveFan(i int32) {
 	if s.verbose {
-		println("MoveFan", i)
+		println(s.ts(), "MoveFan", i)
 	}
 	s.GoToMode(ControlModeFan)
 	s.move(i)
@@ -198,7 +198,7 @@ func (s *State) MoveFan(i int32) {
 // It does not change the "State" of the device. This is useful for fixing off-by-one movements
 func (s *State) MovePower(i int32) {
 	if s.verbose {
-		println("MovePower", i)
+		println(s.ts(), "MovePower", i)
 	}
 	s.GoToMode(ControlModePower)
 	s.move(i)
@@ -208,7 +208,7 @@ func (s *State) MovePower(i int32) {
 // If this exceeds the bounds, it will still move by the number of increments.
 func (s *State) MoveTimer(i int32) {
 	if s.verbose {
-		println("MoveTimer", i)
+		println(s.ts(), "MoveTimer", i)
 	}
 	s.GoToMode(ControlModeTimer)
 	s.move(i)
@@ -227,41 +227,45 @@ func (s *State) FixFan(f uint) {
 // SetFan sets the FreshRoast fan to the specified value
 func (s *State) SetFan(f uint) {
 	if s.verbose {
-		println("SetFan", f)
+		println(s.ts(), "SetFan", f)
 	}
 	if f < 1 || f > 9 {
 		return
 	}
 
-	s.fan = uint(f)
+	println(s.ts(), levelStr("F", f))
 
 	// Only actually move if started. This allows setting base values
 	if !s.startTime.IsZero() {
 		delta := f - s.fan
 		s.MoveFan(int32(delta))
 	} else if s.verbose {
-		println("Not moving since this has not started")
+		println(s.ts(), "Not moving since this has not started")
 	}
+
+	s.fan = uint(f)
 }
 
 // SetPower sets the FreshRoast power to the specified value
 func (s *State) SetPower(p uint) {
 	if s.verbose {
-		println("SetPower", p)
+		println(s.ts(), "SetPower", p)
 	}
 	if p < 1 || p > 9 {
 		return
 	}
 
-	s.power = p
+	println(s.ts(), levelStr("P", p))
 
 	// Only actually move if started. This allows setting base values
 	if !s.startTime.IsZero() {
 		delta := p - s.power
 		s.MovePower(int32(delta))
 	} else if s.verbose {
-		println("Not moving since this has not started")
+		println(s.ts(), "Not moving since this has not started")
 	}
+
+	s.power = p
 }
 
 // move simply moves the stepper by the specified number of increments
@@ -283,15 +287,12 @@ func (s *State) move(n int32) {
 func main() {
 	stepperCfg := easystepper.DeviceConfig{
 		Pin1: machine.GP0, Pin2: machine.GP1, Pin3: machine.GP2, Pin4: machine.GP3,
-		// Pin1: machine.D8, Pin2: machine.D9, Pin3: machine.D11, Pin4: machine.D12,
 		// StepCount: 200,
 		// RPM:       50,
 		// Mode:      easystepper.ModeFour,
 	}
 
 	servoCfg := ServoConfig{
-		// PWM: machine.Timer1,
-		// Pin: machine.D10,
 		PWM: machine.PWM2,
 		Pin: machine.GP4,
 	}
@@ -311,4 +312,17 @@ func main() {
 	}
 
 	RunCommands(&state)
+}
+
+// ts returns the duration timestamp for logging
+func (s *State) ts() string {
+	if s.startTime.IsZero() {
+		return "[-]"
+	}
+	return "[" + s.Duration().String() + "]"
+}
+
+// levelStr formats a power/fan level setting like F9 or P9
+func levelStr[T uint | int](character string, level T) string {
+	return character + string(level)
 }
