@@ -1,24 +1,25 @@
 package main
 
 import (
+	"errors"
 	"machine"
 	"time"
 
 	"tinygo.org/x/drivers/easystepper"
 )
 
-// type Stepper interface {
-// 	Move(int32)
-// }
+type Stepper interface {
+	Move(int32)
+}
 
-// func NewEasyStepper(cfg easystepper.DeviceConfig) (*easystepper.Device, error) {
-// 	stepper, err := easystepper.New(cfg)
-// 	if err != nil {
-// 		return nil, errors.New("error creating stepper: " + err.Error())
-// 	}
-// 	stepper.Configure()
-// 	return stepper, nil
-// }
+func NewEasyStepper(cfg easystepper.DeviceConfig) (*easystepper.Device, error) {
+	stepper, err := easystepper.New(cfg)
+	if err != nil {
+		return nil, errors.New("error creating stepper: " + err.Error())
+	}
+	stepper.Configure()
+	return stepper, nil
+}
 
 type WorkingStepper struct {
 	Pins [4]machine.Pin

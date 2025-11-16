@@ -90,6 +90,7 @@ var commands = []*Command{
 	SetPowerCommand,
 	SetModeCommand,
 	ClickCommand,
+	// TODO: Add debug and fix commands
 }
 
 func RunCommands(s *State) {

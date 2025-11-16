@@ -30,7 +30,7 @@ func (cm ControlMode) Next() ControlMode {
 // State controls the state of the device. It manages the Stepper and Servo motors. It also tracks the current
 // state of the FreshRoast.
 type State struct {
-	stepper        *WorkingStepper
+	stepper        Stepper
 	servo          servo.Servo
 	calibrationCfg CalibrationConfig
 
@@ -89,10 +89,10 @@ func NewState(stepperCfg easystepper.DeviceConfig, servoCfg ServoConfig, calibra
 		servo:              myServo,
 		calibrationCfg:     calibrationCfg,
 		currentControlMode: ControlModeFan,
-		fan:                1,
-		power:              1,
-		// startTime:          time.Now(),
-		// lastClick:          time.Now(),
+		fan:                0,
+		power:              0,
+		startTime:          time.Now(),
+		lastClick:          time.Time{},
 	}, nil
 }
 
@@ -238,15 +238,18 @@ func (s *State) move(n int32) {
 
 func main() {
 	stepperCfg := easystepper.DeviceConfig{
-		Pin1: machine.D8, Pin2: machine.D9, Pin3: machine.D11, Pin4: machine.D12,
+		Pin1: machine.GP0, Pin2: machine.GP1, Pin3: machine.GP2, Pin4: machine.GP3,
+		// Pin1: machine.D8, Pin2: machine.D9, Pin3: machine.D11, Pin4: machine.D12,
 		// StepCount: 200,
 		// RPM:       50,
 		// Mode:      easystepper.ModeFour,
 	}
 
 	servoCfg := ServoConfig{
-		PWM: machine.Timer1,
-		Pin: machine.D10,
+		// PWM: machine.Timer1,
+		// Pin: machine.D10,
+		PWM: machine.PWM2,
+		Pin: machine.GP4,
 	}
 	calibrationCfg := CalibrationConfig{
 		ServoBasePosition:  10,
@@ -263,5 +266,6 @@ func main() {
 		panic(err)
 	}
 
+	println("Ready...", time.Now().String())
 	RunCommands(&state)
 }
