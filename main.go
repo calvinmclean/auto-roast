@@ -132,7 +132,7 @@ func (s *State) Duration() time.Duration {
 }
 
 // ClickButton uses the servo motor to click the FreshRoast button to enable setting changes
-func (s *State) ClickButton() ControlMode {
+func (s *State) ClickButton() {
 	if s.verbose {
 		println("ClickButton")
 	}
@@ -140,7 +140,7 @@ func (s *State) ClickButton() ControlMode {
 	err := s.servo.SetAngle(s.calibrationCfg.ServoClickPosition)
 	if err != nil {
 		println("error setting servo angle:", err.Error())
-		return s.currentControlMode
+		return
 	}
 
 	time.Sleep(s.calibrationCfg.ServoPressDelay)
@@ -148,13 +148,11 @@ func (s *State) ClickButton() ControlMode {
 	err = s.servo.SetAngle(s.calibrationCfg.ServoBasePosition)
 	if err != nil {
 		println("error resetting servo angle:", err.Error())
-		return s.currentControlMode
+		return
 	}
 
+	s.lastClick = time.Now()
 	time.Sleep(s.calibrationCfg.ServoResetDelay)
-
-	s.currentControlMode = s.currentControlMode.Next()
-	return s.currentControlMode
 }
 
 // GoToMode will click the FreshRoast button until the target ControlMode is active
@@ -162,12 +160,22 @@ func (s *State) GoToMode(target ControlMode) {
 	if s.verbose {
 		println("GoToMode:", target)
 	}
-
 	if target == ControlModeUnknown {
 		return
 	}
+
+	// If we have started running, then we need extra logic to see if we are in "select mode".
+	// This is required because the "select mode" automatically stops after ~3s, so we need to
+	// click an extra time to get back into "select mode"
+	if !s.startTime.IsZero() {
+		if time.Since(s.lastClick) > 3*time.Second {
+			s.ClickButton()
+		}
+	}
+
 	for s.currentControlMode != target {
-		_ = s.ClickButton()
+		s.ClickButton()
+		s.currentControlMode = s.currentControlMode.Next()
 	}
 }
 

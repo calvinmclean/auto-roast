@@ -75,7 +75,7 @@ var (
 		Flag:      'C',
 		InputSize: 0,
 		Run: func(s *State, input []byte) error {
-			_ = s.ClickButton()
+			s.ClickButton()
 			return nil
 		},
 	}
@@ -93,6 +93,8 @@ var (
 			println("F:", s.fan)
 			println("P:", s.power)
 			println("M:", s.currentControlMode.String())
+			println("StartTime:", s.startTime.String())
+			println("LastClick:", s.lastClick.String())
 			return nil
 		},
 	}
