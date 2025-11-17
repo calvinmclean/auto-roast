@@ -18,19 +18,19 @@ var (
 	SetFanCommand = &Command{
 		Flag:      'F',
 		InputSize: 1,
-		Run: func(s *controller.Controller, input []byte) error {
+		Run: func(c *controller.Controller, input []byte) error {
 			switch in := input[0]; in {
 			case '-':
-				s.MoveFan(-1)
+				c.MoveFan(-1)
 			case '+':
-				s.MoveFan(+1)
+				c.MoveFan(+1)
 			default:
 				f := b2i(in)
 				if f <= 0 || f > 9 {
 					return errors.New("invalid input: " + string(input))
 				}
 
-				s.SetFan(f)
+				c.SetFan(f)
 			}
 			return nil
 		},
@@ -38,19 +38,19 @@ var (
 	SetPowerCommand = &Command{
 		Flag:      'P',
 		InputSize: 1,
-		Run: func(s *controller.Controller, input []byte) error {
+		Run: func(c *controller.Controller, input []byte) error {
 			switch in := input[0]; in {
 			case '-':
-				s.MovePower(-1)
+				c.MovePower(-1)
 			case '+':
-				s.MovePower(+1)
+				c.MovePower(+1)
 			default:
 				p := b2i(in)
 				if p <= 0 || p > 9 {
 					return errors.New("invalid input: " + string(input))
 				}
 
-				s.SetPower(p)
+				c.SetPower(p)
 			}
 			return nil
 		},
@@ -58,7 +58,7 @@ var (
 	SetModeCommand = &Command{
 		Flag:      'M',
 		InputSize: 1,
-		Run: func(s *controller.Controller, input []byte) error {
+		Run: func(c *controller.Controller, input []byte) error {
 			mode := controller.ControlModeUnknown
 			switch in := input[0]; in {
 			case 'F':
@@ -68,46 +68,46 @@ var (
 			case 'T':
 				mode = controller.ControlModeTimer
 			}
-			s.GoToMode(mode)
+			c.GoToMode(mode)
 			return nil
 		},
 	}
 	ClickCommand = &Command{
 		Flag:      'C',
 		InputSize: 0,
-		Run: func(s *controller.Controller, input []byte) error {
-			s.ClickButton()
+		Run: func(c *controller.Controller, input []byte) error {
+
 			return nil
 		},
 	}
 	StartCommand = &Command{
 		Flag:      'S',
 		InputSize: 0,
-		Run: func(s *controller.Controller, b []byte) error {
-			return s.Start()
+		Run: func(c *controller.Controller, b []byte) error {
+			return c.Start()
 		},
 	}
 	DebugCommand = &Command{
 		Flag:      'D',
 		InputSize: 0,
-		Run: func(s *controller.Controller, b []byte) error {
-			s.Debug()
+		Run: func(c *controller.Controller, b []byte) error {
+			c.Debug()
 			return nil
 		},
 	}
 	VerboseCommand = &Command{
 		Flag:      'V',
 		InputSize: 0,
-		Run: func(s *controller.Controller, b []byte) error {
-			s.Verbose()
+		Run: func(c *controller.Controller, b []byte) error {
+			c.Verbose()
 			return nil
 		},
 	}
 	IncreaseTimeCommand = &Command{
 		Flag:      'T',
 		InputSize: 0,
-		Run: func(s *controller.Controller, b []byte) error {
-			s.IncreaseTime()
+		Run: func(c *controller.Controller, b []byte) error {
+			c.IncreaseTime()
 			return nil
 		},
 	}
@@ -143,7 +143,6 @@ var (
 			switch test {
 			case '1': // Run a simple test that toggles values and does not start
 				funcs := []func(){
-					func() { c.SetFan(5) },
 					func() { c.SetFan(5) },
 					func() { c.SetPower(5) },
 					func() { c.SetFan(9) },
@@ -185,7 +184,7 @@ var commands = []*Command{
 	TestCommand,
 }
 
-func RunCommands(s *controller.Controller) {
+func RunCommands(c *controller.Controller) {
 	cmdMap := map[byte]*Command{}
 
 	for _, cmd := range commands {
@@ -213,7 +212,7 @@ func RunCommands(s *controller.Controller) {
 			in[i] = b
 		}
 
-		err = cmd.Run(s, in)
+		err = cmd.Run(c, in)
 		if err != nil {
 			println("error:", err.Error())
 		}

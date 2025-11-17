@@ -184,13 +184,8 @@ func (s *Controller) SetFan(f uint) {
 
 	println(s.ts(), levelStr("F", f))
 
-	// Only actually move if started. This allows setting base values
-	if !s.startTime.IsZero() {
-		delta := f - s.fan
-		s.MoveFan(int32(delta))
-	} else if s.verbose {
-		println(s.ts(), "Not moving since this has not started")
-	}
+	delta := f - s.fan
+	s.MoveFan(int32(delta))
 
 	s.fan = uint(f)
 }
@@ -206,13 +201,8 @@ func (s *Controller) SetPower(p uint) {
 
 	println(s.ts(), levelStr("P", p))
 
-	// Only actually move if started. This allows setting base values
-	if !s.startTime.IsZero() {
-		delta := p - s.power
-		s.MovePower(int32(delta))
-	} else if s.verbose {
-		println(s.ts(), "Not moving since this has not started")
-	}
+	delta := p - s.power
+	s.MovePower(int32(delta))
 
 	s.power = p
 }

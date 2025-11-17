@@ -27,8 +27,8 @@ func main() {
 		ServoPressDelay:    250 * time.Millisecond,
 		ServoResetDelay:    250 * time.Millisecond,
 		// StepsPerIncrement:  61,
-		StepsPerIncrement:   28,
-		BacklashSteps:       2,
+		StepsPerIncrement:   30,
+		BacklashSteps:       0,
 		DelayAfterServoMove: 200 * time.Millisecond,
 	}
 
