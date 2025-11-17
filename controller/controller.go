@@ -140,7 +140,7 @@ func (s *Controller) MoveFan(i int32) {
 		println(s.ts(), "MoveFan", i)
 	}
 	s.GoToMode(ControlModeFan)
-	s.move(i)
+	s.Move(i)
 }
 
 // MovePower controls the FreshRoast to move the power value by the specified number of increments.
@@ -150,7 +150,7 @@ func (s *Controller) MovePower(i int32) {
 		println(s.ts(), "MovePower", i)
 	}
 	s.GoToMode(ControlModePower)
-	s.move(i)
+	s.Move(i)
 }
 
 // MoveTimer controls the FreshRoast to move the timer value by the specified number of increments.
@@ -160,7 +160,7 @@ func (s *Controller) MoveTimer(i int32) {
 		println(s.ts(), "MoveTimer", i)
 	}
 	s.GoToMode(ControlModeTimer)
-	s.move(i)
+	s.Move(i)
 }
 
 // FixPower manually sets the current power to the specified value to account for errors. It does not control the device
@@ -213,11 +213,11 @@ func (s *Controller) IncreaseTime() {
 		println(s.ts(), "IncreaseTime")
 	}
 	s.GoToMode(ControlModeTimer)
-	s.move(5)
+	s.Move(5)
 }
 
-// move simply moves the stepper by the specified number of increments
-func (s *Controller) move(n int32) {
+// Move simply moves the stepper by the specified number of increments
+func (s *Controller) Move(n int32) {
 	move := n * int32(s.calibrationCfg.StepsPerIncrement)
 
 	// add or subtract backlash steps based on direction change

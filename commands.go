@@ -76,7 +76,7 @@ var (
 		Flag:      'C',
 		InputSize: 0,
 		Run: func(c *controller.Controller, input []byte) error {
-
+			c.ClickButton()
 			return nil
 		},
 	}
@@ -169,6 +169,22 @@ var (
 			return nil
 		},
 	}
+	StepCommand = &Command{
+		Flag:      'A',
+		InputSize: 2,
+		Run: func(c *controller.Controller, b []byte) error {
+			s := int32(1)
+			if b[0] == '-' {
+				s = -1
+			}
+
+			v := b2i(b[1])
+
+			c.Move(int32(v) * s)
+
+			return nil
+		},
+	}
 )
 
 var commands = []*Command{
@@ -182,6 +198,7 @@ var commands = []*Command{
 	IncreaseTimeCommand,
 	RecoverCommand,
 	TestCommand,
+	StepCommand,
 }
 
 func RunCommands(c *controller.Controller) {
