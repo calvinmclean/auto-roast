@@ -8,5 +8,6 @@ tasks:
       - go test
 
   flash:
+    aliases: ["f"]
     cmds:
       - tinygo flash -target=pico

@@ -28,7 +28,7 @@ var (
 					return errors.New("invalid input: " + string(input))
 				}
 
-				s.SetFan(uint(f))
+				s.SetFan(f)
 			}
 			return nil
 		},
@@ -48,7 +48,7 @@ var (
 					return errors.New("invalid input: " + string(input))
 				}
 
-				s.SetPower(uint(p))
+				s.SetPower(p)
 			}
 			return nil
 		},
@@ -109,6 +109,26 @@ var (
 			return nil
 		},
 	}
+	RecoverCommand = &Command{
+		Flag:      'R',
+		InputSize: 2,
+		Run: func(c *controller.Controller, b []byte) error {
+			if len(b) != 2 {
+				return errors.New("invalid input")
+			}
+
+			v := b2i(b[1])
+
+			switch b[0] {
+			case 'F':
+				c.FixFan(v)
+			case 'P':
+				c.FixPower(v)
+			}
+
+			return nil
+		},
+	}
 )
 
 var commands = []*Command{
@@ -120,6 +140,7 @@ var commands = []*Command{
 	DebugCommand,
 	VerboseCommand,
 	IncreaseTimeCommand,
+	RecoverCommand,
 }
 
 func RunCommands(s *controller.Controller) {
@@ -157,8 +178,8 @@ func RunCommands(s *controller.Controller) {
 	}
 }
 
-func b2i(b byte) int {
-	return int(b - '0')
+func b2i(b byte) uint {
+	return uint(b - '0')
 }
 
 func readLine() []byte {

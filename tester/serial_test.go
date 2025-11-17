@@ -32,7 +32,9 @@ func sendSerial(t *testing.T, in string, expectedLen int) string {
 
 	buf := make([]byte, expectedLen)
 	total := 0
-	for total < expectedLen {
+	port.SetReadTimeout(1 * time.Second)
+	deadline := time.Now().Add(1 * time.Second)
+	for total < expectedLen && time.Now().Before(deadline) {
 		n, err := port.Read(buf)
 		if err != nil {
 			t.Errorf("unexpected error reading serial: %v", err)
@@ -55,6 +57,13 @@ func TestSerial(t *testing.T) {
 			`[-] F1
 [-] P1
 [-] F1/P1 mode=Fan
+`,
+		},
+		{
+			"RecoverFanAndPower",
+			"D RF5 RP6 D",
+			`[-] F1/P1 mode=Fan
+[-] F5/P6 mode=Fan
 `,
 		},
 	}
