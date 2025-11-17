@@ -2,6 +2,7 @@ version: "3"
 
 tasks:
   serial-test:
+    aliases: ["st"]
     dir: ./tester
     cmds:
       - go test

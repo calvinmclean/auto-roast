@@ -1,6 +1,7 @@
 package main
 
 import (
+	"autoroast/controller"
 	"errors"
 	"machine"
 )
@@ -8,14 +9,14 @@ import (
 type Command struct {
 	Flag      byte
 	InputSize uint
-	Run       func(*State, []byte) error
+	Run       func(*controller.Controller, []byte) error
 }
 
 var (
 	SetFanCommand = &Command{
 		Flag:      'F',
 		InputSize: 1,
-		Run: func(s *State, input []byte) error {
+		Run: func(s *controller.Controller, input []byte) error {
 			switch in := input[0]; in {
 			case '-':
 				s.MoveFan(-1)
@@ -35,7 +36,7 @@ var (
 	SetPowerCommand = &Command{
 		Flag:      'P',
 		InputSize: 1,
-		Run: func(s *State, input []byte) error {
+		Run: func(s *controller.Controller, input []byte) error {
 			switch in := input[0]; in {
 			case '-':
 				s.MovePower(-1)
@@ -55,15 +56,15 @@ var (
 	SetModeCommand = &Command{
 		Flag:      'M',
 		InputSize: 1,
-		Run: func(s *State, input []byte) error {
-			mode := ControlModeUnknown
+		Run: func(s *controller.Controller, input []byte) error {
+			mode := controller.ControlModeUnknown
 			switch in := input[0]; in {
 			case 'F':
-				mode = ControlModeFan
+				mode = controller.ControlModeFan
 			case 'P':
-				mode = ControlModePower
+				mode = controller.ControlModePower
 			case 'T':
-				mode = ControlModeTimer
+				mode = controller.ControlModeTimer
 			}
 			s.GoToMode(mode)
 			return nil
@@ -72,7 +73,7 @@ var (
 	ClickCommand = &Command{
 		Flag:      'C',
 		InputSize: 0,
-		Run: func(s *State, input []byte) error {
+		Run: func(s *controller.Controller, input []byte) error {
 			s.ClickButton()
 			return nil
 		},
@@ -80,33 +81,30 @@ var (
 	StartCommand = &Command{
 		Flag:      'S',
 		InputSize: 0,
-		Run: func(s *State, b []byte) error {
+		Run: func(s *controller.Controller, b []byte) error {
 			return s.Start()
 		},
 	}
 	DebugCommand = &Command{
 		Flag:      'D',
 		InputSize: 0,
-		Run: func(s *State, b []byte) error {
-			d := s.ts() + " " + levelStr("F", s.fan) + "/" + levelStr("P", s.power)
-			d += " mode=" + s.currentControlMode.String()
-			println(d)
+		Run: func(s *controller.Controller, b []byte) error {
+			s.Debug()
 			return nil
 		},
 	}
 	VerboseCommand = &Command{
 		Flag:      'V',
 		InputSize: 0,
-		Run: func(s *State, b []byte) error {
-			s.verbose = true
-			println(s.ts(), "Set Verbose Mode")
+		Run: func(s *controller.Controller, b []byte) error {
+			s.Verbose()
 			return nil
 		},
 	}
 	IncreaseTimeCommand = &Command{
 		Flag:      'T',
 		InputSize: 0,
-		Run: func(s *State, b []byte) error {
+		Run: func(s *controller.Controller, b []byte) error {
 			s.IncreaseTime()
 			return nil
 		},
@@ -124,7 +122,7 @@ var commands = []*Command{
 	IncreaseTimeCommand,
 }
 
-func RunCommands(s *State) {
+func RunCommands(s *controller.Controller) {
 	cmdMap := map[byte]*Command{}
 
 	for _, cmd := range commands {
