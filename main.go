@@ -74,12 +74,13 @@ type ServoConfig struct {
 
 // CalibrationConfig has values for the moving parts that depend on positioning and motor specifics
 type CalibrationConfig struct {
-	ServoBasePosition  int
-	ServoClickPosition int
-	ServoPressDelay    time.Duration
-	ServoResetDelay    time.Duration
-	StepsPerIncrement  uint
-	BacklashSteps      uint
+	ServoBasePosition   int
+	ServoClickPosition  int
+	ServoPressDelay     time.Duration
+	ServoResetDelay     time.Duration
+	StepsPerIncrement   uint
+	BacklashSteps       uint
+	DelayAfterServoMove time.Duration
 }
 
 // NewState intializes the state with the provided configs
@@ -291,6 +292,8 @@ func (s *State) move(n int32) {
 	}
 
 	s.stepper.Move(move)
+
+	time.Sleep(s.calibrationCfg.DelayAfterServoMove)
 }
 
 func main() {
@@ -311,8 +314,9 @@ func main() {
 		ServoPressDelay:    250 * time.Millisecond,
 		ServoResetDelay:    250 * time.Millisecond,
 		// StepsPerIncrement:  61,
-		StepsPerIncrement: 28,
-		BacklashSteps:     2,
+		StepsPerIncrement:   28,
+		BacklashSteps:       2,
+		DelayAfterServoMove: 200 * time.Millisecond,
 	}
 
 	state, err := NewState(stepperCfg, servoCfg, calibrationCfg)
