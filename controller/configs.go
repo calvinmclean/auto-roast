@@ -15,11 +15,11 @@ type ServoConfig struct {
 
 // CalibrationConfig has values for the moving parts that depend on positioning and motor specifics
 type CalibrationConfig struct {
-	ServoBasePosition   int
-	ServoClickPosition  int
-	ServoPressDelay     time.Duration
-	ServoResetDelay     time.Duration
-	StepsPerIncrement   uint
-	BacklashSteps       uint
-	DelayAfterServoMove time.Duration
+	ServoBasePosition     int
+	ServoClickPosition    int
+	ServoPressDelay       time.Duration
+	ServoResetDelay       time.Duration
+	StepsPerIncrement     uint
+	BacklashSteps         uint
+	DelayAfterStepperMove time.Duration
 }

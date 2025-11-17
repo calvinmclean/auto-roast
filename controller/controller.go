@@ -29,6 +29,8 @@ type Controller struct {
 	lastDirection int
 
 	verbose bool
+
+	remainder float32
 }
 
 // New intializes the state with the provided configs
@@ -218,7 +220,10 @@ func (s *Controller) IncreaseTime() {
 
 // Move simply moves the stepper by the specified number of increments
 func (s *Controller) Move(n int32) {
-	move := n * int32(s.calibrationCfg.StepsPerIncrement)
+	rawMove := float32(n*int32(s.calibrationCfg.StepsPerIncrement)) + s.remainder
+
+	move := int32(rawMove + 0.5)
+	s.remainder = rawMove - float32(move)
 
 	// add or subtract backlash steps based on direction change
 	if s.lastDirection < 0 && move > 0 {
@@ -231,7 +236,7 @@ func (s *Controller) Move(n int32) {
 
 	s.stepper.Move(move)
 
-	time.Sleep(s.calibrationCfg.DelayAfterServoMove)
+	time.Sleep(s.calibrationCfg.DelayAfterStepperMove)
 }
 
 // Debug pritns out details of the Controller's state
