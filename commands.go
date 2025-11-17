@@ -1,9 +1,11 @@
 package main
 
 import (
-	"autoroast/controller"
 	"errors"
 	"machine"
+	"time"
+
+	"autoroast/controller"
 )
 
 type Command struct {
@@ -129,6 +131,45 @@ var (
 			return nil
 		},
 	}
+	TestCommand = &Command{
+		Flag:      'Z',
+		InputSize: 1,
+		Run: func(c *controller.Controller, b []byte) error {
+			test := byte('1')
+			if len(b) > 0 {
+				test = b[0]
+			}
+
+			switch test {
+			case '1': // Run a simple test that toggles values and does not start
+				funcs := []func(){
+					func() { c.SetFan(5) },
+					func() { c.SetFan(5) },
+					func() { c.SetPower(5) },
+					func() { c.SetFan(9) },
+					func() { c.SetFan(8) },
+					func() { c.SetPower(9) },
+					func() { c.SetPower(8) },
+				}
+
+				// Run with short delay
+				for _, f := range funcs {
+					f()
+					time.Sleep(500 * time.Millisecond)
+				}
+
+				c.SetFan(1)
+				c.SetPower(1)
+
+				// Run with no delay
+				for _, f := range funcs {
+					f()
+				}
+			}
+
+			return nil
+		},
+	}
 )
 
 var commands = []*Command{
@@ -141,6 +182,7 @@ var commands = []*Command{
 	VerboseCommand,
 	IncreaseTimeCommand,
 	RecoverCommand,
+	TestCommand,
 }
 
 func RunCommands(s *controller.Controller) {

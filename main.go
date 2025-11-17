@@ -1,9 +1,10 @@
 package main
 
 import (
-	"autoroast/controller"
 	"machine"
 	"time"
+
+	"autoroast/controller"
 
 	"tinygo.org/x/drivers/easystepper"
 )
