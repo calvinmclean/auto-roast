@@ -268,6 +268,15 @@ func (s *State) SetPower(p uint) {
 	s.power = p
 }
 
+// IncreaseTime just increases the time on device by 5m
+func (s *State) IncreaseTime() {
+	if s.verbose {
+		println(s.ts(), "IncreaseTime")
+	}
+	s.GoToMode(ControlModeTimer)
+	s.move(5)
+}
+
 // move simply moves the stepper by the specified number of increments
 func (s *State) move(n int32) {
 	move := n * int32(s.calibrationCfg.StepsPerIncrement)

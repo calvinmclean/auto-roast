@@ -105,6 +105,14 @@ var (
 			return nil
 		},
 	}
+	IncreaseTimeCommand = &Command{
+		Flag:      'T',
+		InputSize: 0,
+		Run: func(s *State, b []byte) error {
+			s.IncreaseTime()
+			return nil
+		},
+	}
 )
 
 var commands = []*Command{
@@ -115,9 +123,8 @@ var commands = []*Command{
 	StartCommand,
 	DebugCommand,
 	VerboseCommand,
-	// TODO: Time Command
-	// TODO: record preheat?
-	// TODO: record cooling start?
+	IncreaseTimeCommand,
+	// TODO: record preheat? this would help with duration tracking
 }
 
 func RunCommands(s *State) {
