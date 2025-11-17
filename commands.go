@@ -128,21 +128,27 @@ func RunCommands(s *State) {
 	}
 
 	for {
-		input := readLine()
-		if len(input) == 0 {
+		cmdIn, err := machine.Serial.ReadByte()
+		if err != nil {
 			continue
 		}
 
-		cmd, ok := cmdMap[input[0]]
+		cmd, ok := cmdMap[cmdIn]
 		if !ok {
 			continue
 		}
 
-		if uint(len(input)-1) != cmd.InputSize {
-			continue
+		in := make([]byte, cmd.InputSize)
+		for i := range cmd.InputSize {
+			b, err := machine.Serial.ReadByte()
+			if err != nil {
+				println(err)
+				continue
+			}
+			in[i] = b
 		}
 
-		err := cmd.Run(s, input[1:])
+		err = cmd.Run(s, in)
 		if err != nil {
 			println("error:", err.Error())
 		}

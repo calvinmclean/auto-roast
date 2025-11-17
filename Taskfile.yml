@@ -1,0 +1,11 @@
+version: "3"
+
+tasks:
+  serial-test:
+    dir: ./tester
+    cmds:
+      - go test
+
+  flash:
+    cmds:
+      - tinygo flash -target=pico

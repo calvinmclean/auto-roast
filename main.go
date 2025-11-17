@@ -324,5 +324,5 @@ func (s *State) ts() string {
 
 // levelStr formats a power/fan level setting like F9 or P9
 func levelStr[T uint | int](character string, level T) string {
-	return character + string(level)
+	return character + string(byte(level)+'0')
 }
