@@ -6,11 +6,9 @@ import (
 )
 
 type Command struct {
-	Flag byte
-	// TODO: add configs so all input parsing can be done externally?
+	Flag      byte
 	InputSize uint
-	// InputType string
-	Run func(*State, []byte) error
+	Run       func(*State, []byte) error
 }
 
 var (
@@ -124,7 +122,6 @@ var commands = []*Command{
 	DebugCommand,
 	VerboseCommand,
 	IncreaseTimeCommand,
-	// TODO: record preheat? this would help with duration tracking
 }
 
 func RunCommands(s *State) {
