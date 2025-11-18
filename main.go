@@ -23,11 +23,11 @@ func main() {
 	}
 	calibrationCfg := controller.CalibrationConfig{
 		ServoBasePosition:  10,
-		ServoClickPosition: 65,
-		ServoPressDelay:    250 * time.Millisecond,
+		ServoClickPosition: 42,
+		ServoPressDelay:    150 * time.Millisecond,
 		ServoResetDelay:    250 * time.Millisecond,
 		// StepsPerIncrement:  61,
-		StepsPerIncrement:     30,
+		StepsPerIncrement:     30.5,
 		BacklashSteps:         0,
 		DelayAfterStepperMove: 750 * time.Millisecond,
 	}

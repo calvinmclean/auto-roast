@@ -112,6 +112,7 @@ var (
 		},
 	}
 	RecoverCommand = &Command{
+		// TODO: rename to lower-case 'f' and 'p'?
 		Flag:      'R',
 		InputSize: 2,
 		Run: func(c *controller.Controller, b []byte) error {

@@ -19,7 +19,7 @@ type CalibrationConfig struct {
 	ServoClickPosition    int
 	ServoPressDelay       time.Duration
 	ServoResetDelay       time.Duration
-	StepsPerIncrement     uint
-	BacklashSteps         uint
+	StepsPerIncrement     float32
+	BacklashSteps         int32
 	DelayAfterStepperMove time.Duration
 }
