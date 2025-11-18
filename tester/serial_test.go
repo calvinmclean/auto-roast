@@ -61,7 +61,7 @@ func TestSerial(t *testing.T) {
 		},
 		{
 			"RecoverFanAndPower",
-			"D RF5 RP6 D",
+			"D f5 p6 D",
 			`[-] F1/P1 mode=Fan
 [-] F5/P6 mode=Fan
 `,

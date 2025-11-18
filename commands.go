@@ -111,24 +111,21 @@ var (
 			return nil
 		},
 	}
-	RecoverCommand = &Command{
-		// TODO: rename to lower-case 'f' and 'p'?
-		Flag:      'R',
-		InputSize: 2,
+	FixFanCommand = &Command{
+		Flag:      'f',
+		InputSize: 1,
 		Run: func(c *controller.Controller, b []byte) error {
-			if len(b) != 2 {
-				return errors.New("invalid input")
-			}
-
-			v := b2i(b[1])
-
-			switch b[0] {
-			case 'F':
-				c.FixFan(v)
-			case 'P':
-				c.FixPower(v)
-			}
-
+			v := b2i(b[0])
+			c.FixFan(v)
+			return nil
+		},
+	}
+	FixPowerCommand = &Command{
+		Flag:      'p',
+		InputSize: 1,
+		Run: func(c *controller.Controller, b []byte) error {
+			v := b2i(b[0])
+			c.FixPower(v)
 			return nil
 		},
 	}
@@ -197,7 +194,8 @@ var commands = []*Command{
 	DebugCommand,
 	VerboseCommand,
 	IncreaseTimeCommand,
-	RecoverCommand,
+	FixFanCommand,
+	FixPowerCommand,
 	TestCommand,
 	StepCommand,
 }
