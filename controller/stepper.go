@@ -22,7 +22,8 @@ func NewEasyStepper(cfg easystepper.DeviceConfig) (*easystepper.Device, error) {
 }
 
 type WorkingStepper struct {
-	Pins [4]machine.Pin
+	Pins        [4]machine.Pin
+	currentStep int
 }
 
 func NewWorkingStepper(cfg easystepper.DeviceConfig) (*WorkingStepper, error) {
@@ -36,56 +37,88 @@ func NewWorkingStepper(cfg easystepper.DeviceConfig) (*WorkingStepper, error) {
 }
 
 var (
-	// // 8-step half-step sequence
-	// sequence = [8][4]bool{
-	// 	{true, false, false, false},
-	// 	{true, true, false, false},
-	// 	{false, true, false, false},
-	// 	{false, true, true, false},
-	// 	{false, false, true, false},
-	// 	{false, false, true, true},
-	// 	{false, false, false, true},
-	// 	{true, false, false, true},
-	// }
-
-	// 4-step sequence
-	sequence = [4][4]bool{
+	// 8-step half-step sequence
+	sequence = [8][4]bool{
 		{true, false, false, false},
+		{true, true, false, false},
 		{false, true, false, false},
+		{false, true, true, false},
 		{false, false, true, false},
+		{false, false, true, true},
 		{false, false, false, true},
+		{true, false, false, true},
 	}
+
+	// // 4-step sequence
+	// sequence = [4][4]bool{
+	// 	{true, false, false, false},
+	// 	{false, true, false, false},
+	// 	{false, false, true, false},
+	// 	{false, false, false, true},
+	// }
 )
 
+// func (s *WorkingStepper) Move(steps int32) {
+// 	f := s.stepForward
+// 	if steps < 0 {
+// 		f = s.stepBackward
+// 		steps = -steps
+// 	}
+
+// 	for range steps {
+// 		f()
+// 	}
+// }
+
+// func (s *WorkingStepper) step(idx int) {
+// 	s.Pins[0].Set(sequence[idx][0])
+// 	s.Pins[1].Set(sequence[idx][1])
+// 	s.Pins[2].Set(sequence[idx][2])
+// 	s.Pins[3].Set(sequence[idx][3])
+// }
+
+// func (s *WorkingStepper) stepForward() {
+// 	for i := 0; i < len(sequence); i++ {
+// 		s.step(i)
+// 		time.Sleep(2 * time.Millisecond)
+// 	}
+// }
+
+// func (s *WorkingStepper) stepBackward() {
+// 	for i := len(sequence) - 1; i >= 0; i-- {
+// 		s.step(i)
+// 		time.Sleep(2 * time.Millisecond)
+// 	}
+// }
+
+const stepDelay = 2000 * time.Microsecond
+
+func (s *WorkingStepper) applyStep() {
+	for i := range 4 {
+		s.Pins[i].Set(sequence[s.currentStep][i])
+	}
+}
+
+func (s *WorkingStepper) StepForward() {
+	s.currentStep = (s.currentStep + 1) % len(sequence)
+	s.applyStep()
+	time.Sleep(stepDelay)
+}
+
+func (s *WorkingStepper) StepBackward() {
+	s.currentStep = (s.currentStep - 1 + len(sequence)) % len(sequence)
+	s.applyStep()
+	time.Sleep(stepDelay)
+}
+
 func (s *WorkingStepper) Move(steps int32) {
-	f := s.stepForward
-	if steps < 0 {
-		f = s.stepBackward
-		steps = -steps
-	}
-
-	for range steps {
-		f()
-	}
-}
-
-func (s *WorkingStepper) step(idx int) {
-	s.Pins[0].Set(sequence[idx][0])
-	s.Pins[1].Set(sequence[idx][1])
-	s.Pins[2].Set(sequence[idx][2])
-	s.Pins[3].Set(sequence[idx][3])
-}
-
-func (s *WorkingStepper) stepForward() {
-	for i := 0; i < len(sequence); i++ {
-		s.step(i)
-		time.Sleep(2 * time.Millisecond)
-	}
-}
-
-func (s *WorkingStepper) stepBackward() {
-	for i := len(sequence) - 1; i >= 0; i-- {
-		s.step(i)
-		time.Sleep(2 * time.Millisecond)
+	if steps > 0 {
+		for range steps {
+			s.StepForward()
+		}
+	} else {
+		for range -steps {
+			s.StepBackward()
+		}
 	}
 }
