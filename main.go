@@ -6,16 +6,12 @@ import (
 	"time"
 
 	"autoroast/controller"
-
-	"tinygo.org/x/drivers/easystepper"
 )
 
 func main() {
-	stepperCfg := easystepper.DeviceConfig{
-		Pin1: machine.GP0, Pin2: machine.GP1, Pin3: machine.GP2, Pin4: machine.GP3,
-		// StepCount: 200,
-		// RPM:       50,
-		// Mode:      easystepper.ModeFour,
+	stepperCfg := controller.StepperConfig{
+		Pins:     [4]machine.Pin{machine.GP0, machine.GP1, machine.GP2, machine.GP3},
+		StepMode: controller.StepModeHalf,
 	}
 
 	servoCfg := controller.ServoConfig{

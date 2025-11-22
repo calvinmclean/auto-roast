@@ -5,13 +5,12 @@ import (
 	"math"
 	"time"
 
-	"tinygo.org/x/drivers/easystepper"
 	"tinygo.org/x/drivers/servo"
 )
 
 // Controller controls the FreshRoast SR800. It manages the Stepper and Servo motors and the machine's state
 type Controller struct {
-	stepper        Stepper
+	stepper        *Stepper
 	servo          servo.Servo
 	calibrationCfg CalibrationConfig
 
@@ -35,8 +34,8 @@ type Controller struct {
 }
 
 // New intializes the state with the provided configs
-func New(stepperCfg easystepper.DeviceConfig, servoCfg ServoConfig, calibrationCfg CalibrationConfig) (Controller, error) {
-	stepper, err := NewWorkingStepper(stepperCfg)
+func New(stepperCfg StepperConfig, servoCfg ServoConfig, calibrationCfg CalibrationConfig) (Controller, error) {
+	stepper, err := NewStepper(stepperCfg)
 	if err != nil {
 		return Controller{}, errors.New("error creating stepper: " + err.Error())
 	}

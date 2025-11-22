@@ -4,41 +4,48 @@ import (
 	"errors"
 	"machine"
 	"time"
-
-	"tinygo.org/x/drivers/easystepper"
 )
 
-type Stepper interface {
-	Move(int32)
-}
+const defaultStepDelay = 2000 * time.Microsecond
 
-func NewEasyStepper(cfg easystepper.DeviceConfig) (*easystepper.Device, error) {
-	stepper, err := easystepper.New(cfg)
-	if err != nil {
-		return nil, errors.New("error creating stepper: " + err.Error())
-	}
-	stepper.Configure()
-	return stepper, nil
-}
+type StepMode int
 
-type WorkingStepper struct {
-	Pins        [4]machine.Pin
+const (
+	StepModeFull StepMode = iota
+	StepModeHalf
+)
+
+type Stepper struct {
+	pins        [4]machine.Pin
+	stepMode    StepMode
 	currentStep int
+	stepDelay   time.Duration
 }
 
-func NewWorkingStepper(cfg easystepper.DeviceConfig) (*WorkingStepper, error) {
-	w := &WorkingStepper{
-		Pins: [4]machine.Pin{cfg.Pin1, cfg.Pin2, cfg.Pin3, cfg.Pin4},
+func NewStepper(cfg StepperConfig) (*Stepper, error) {
+	if cfg.StepMode != StepModeFull && cfg.StepMode != StepModeHalf {
+		return nil, errors.New("invalid StepMode")
 	}
-	for _, p := range w.Pins {
+
+	if cfg.StepDelay == 0 {
+		cfg.StepDelay = defaultStepDelay
+	}
+
+	w := &Stepper{
+		pins:        [4]machine.Pin{cfg.Pins[0], cfg.Pins[1], cfg.Pins[2], cfg.Pins[3]},
+		stepMode:    cfg.StepMode,
+		stepDelay:   cfg.StepDelay,
+		currentStep: 0,
+	}
+	for _, p := range w.pins {
 		p.Configure(machine.PinConfig{Mode: machine.PinOutput})
 	}
 	return w, nil
 }
 
 var (
-	// 8-step half-step sequence
-	sequence = [8][4]bool{
+	// 8-step half-step halfStepSequence
+	halfStepSequence = [8][4]bool{
 		{true, false, false, false},
 		{true, true, false, false},
 		{false, true, false, false},
@@ -49,69 +56,54 @@ var (
 		{true, false, false, true},
 	}
 
-	// // 4-step sequence
-	// sequence = [4][4]bool{
-	// 	{true, false, false, false},
-	// 	{false, true, false, false},
-	// 	{false, false, true, false},
-	// 	{false, false, false, true},
-	// }
+	// 4-step sequence
+	fullStepSequence = [4][4]bool{
+		{true, false, false, false},
+		{false, true, false, false},
+		{false, false, true, false},
+		{false, false, false, true},
+	}
 )
 
-// func (s *WorkingStepper) Move(steps int32) {
-// 	f := s.stepForward
-// 	if steps < 0 {
-// 		f = s.stepBackward
-// 		steps = -steps
-// 	}
+func (s *Stepper) applyStep() {
+	var sequence [4]bool
+	switch s.stepMode {
+	default:
+		fallthrough
+	case StepModeFull:
+		sequence = fullStepSequence[s.currentStep]
+	case StepModeHalf:
+		sequence = halfStepSequence[s.currentStep]
+	}
 
-// 	for range steps {
-// 		f()
-// 	}
-// }
-
-// func (s *WorkingStepper) step(idx int) {
-// 	s.Pins[0].Set(sequence[idx][0])
-// 	s.Pins[1].Set(sequence[idx][1])
-// 	s.Pins[2].Set(sequence[idx][2])
-// 	s.Pins[3].Set(sequence[idx][3])
-// }
-
-// func (s *WorkingStepper) stepForward() {
-// 	for i := 0; i < len(sequence); i++ {
-// 		s.step(i)
-// 		time.Sleep(2 * time.Millisecond)
-// 	}
-// }
-
-// func (s *WorkingStepper) stepBackward() {
-// 	for i := len(sequence) - 1; i >= 0; i-- {
-// 		s.step(i)
-// 		time.Sleep(2 * time.Millisecond)
-// 	}
-// }
-
-const stepDelay = 2000 * time.Microsecond
-
-func (s *WorkingStepper) applyStep() {
 	for i := range 4 {
-		s.Pins[i].Set(sequence[s.currentStep][i])
+		s.pins[i].Set(sequence[i])
 	}
 }
 
-func (s *WorkingStepper) StepForward() {
-	s.currentStep = (s.currentStep + 1) % len(sequence)
+func (s *Stepper) StepForward() {
+	sequenceLen := 4
+	if s.stepMode == StepModeHalf {
+		sequenceLen = 8
+	}
+
+	s.currentStep = (s.currentStep + 1) % sequenceLen
 	s.applyStep()
-	time.Sleep(stepDelay)
+	time.Sleep(s.stepDelay)
 }
 
-func (s *WorkingStepper) StepBackward() {
-	s.currentStep = (s.currentStep - 1 + len(sequence)) % len(sequence)
+func (s *Stepper) StepBackward() {
+	sequenceLen := 4
+	if s.stepMode == StepModeHalf {
+		sequenceLen = 8
+	}
+
+	s.currentStep = (s.currentStep - 1 + sequenceLen) % sequenceLen
 	s.applyStep()
-	time.Sleep(stepDelay)
+	time.Sleep(s.stepDelay)
 }
 
-func (s *WorkingStepper) Move(steps int32) {
+func (s *Stepper) Move(steps int32) {
 	if steps > 0 {
 		for range steps {
 			s.StepForward()

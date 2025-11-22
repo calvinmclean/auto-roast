@@ -7,6 +7,13 @@ import (
 	"tinygo.org/x/drivers/servo"
 )
 
+// StepperConfig ...
+type StepperConfig struct {
+	Pins      [4]machine.Pin
+	StepMode  StepMode
+	StepDelay time.Duration
+}
+
 // ServoConfig has device-level values for setting up the Servo
 type ServoConfig struct {
 	Pin machine.Pin
