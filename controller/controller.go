@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"tinygo.org/x/drivers/easystepper"
@@ -62,6 +63,7 @@ func New(stepperCfg easystepper.DeviceConfig, servoCfg ServoConfig, calibrationC
 		startTime:          time.Time{},
 		lastClick:          time.Time{},
 		verbose:            false,
+		lastDirection:      +1,
 	}, nil
 }
 
@@ -186,10 +188,19 @@ func (s *Controller) SetFan(f uint) {
 
 	println(s.ts(), levelStr("F", f))
 
-	delta := f - s.fan
-	s.MoveFan(int32(delta))
+	delta := int32(f) - int32(s.fan)
 
-	s.fan = uint(f)
+	// When moving to extremes, we can move extra to re-calibrate and account for inaccuracy
+	if f == 9 {
+		delta += 3
+	}
+	if f == 1 {
+		delta -= 3
+	}
+
+	s.MoveFan(delta)
+
+	s.fan = f
 }
 
 // SetPower sets the FreshRoast power to the specified value
@@ -203,8 +214,16 @@ func (s *Controller) SetPower(p uint) {
 
 	println(s.ts(), levelStr("P", p))
 
-	delta := p - s.power
-	s.MovePower(int32(delta))
+	// When moving to extremes, we can move extra to re-calibrate and account for inaccuracy
+	delta := int32(p) - int32(s.power)
+	if p == 9 {
+		delta += 3
+	}
+	if p == 1 {
+		delta -= 3
+	}
+
+	s.MovePower(delta)
 
 	s.power = p
 }
@@ -222,7 +241,7 @@ func (s *Controller) IncreaseTime() {
 func (s *Controller) Move(n int32) {
 	rawMove := float32(n)*s.calibrationCfg.StepsPerIncrement + s.remainder
 
-	move := int32(rawMove + 0.5)
+	move := int32(math.Round(float64(rawMove)))
 	s.remainder = rawMove - float32(move)
 
 	// add or subtract backlash steps based on direction change
@@ -263,4 +282,8 @@ func (s *Controller) ts() string {
 // levelStr formats a power/fan level setting like F9 or P9
 func levelStr[T uint | int](character string, level T) string {
 	return character + string(byte(level)+'0')
+}
+
+func (s *Controller) FullRev() {
+	s.stepper.Move(4096)
 }
