@@ -174,12 +174,22 @@ var (
 			s := int32(1)
 			if b[0] == '-' {
 				s = -1
+			} else if b[0] != '+' {
+				return errors.New("invalid input")
 			}
 
 			v := b2i(b[1])
 
 			c.Move(int32(v) * s)
 
+			return nil
+		},
+	}
+	FullRevolutionCommand = &Command{
+		Flag:      'R',
+		InputSize: 0,
+		Run: func(c *controller.Controller, b []byte) error {
+			c.FullRev()
 			return nil
 		},
 	}
@@ -198,6 +208,7 @@ var commands = []*Command{
 	FixPowerCommand,
 	TestCommand,
 	StepCommand,
+	FullRevolutionCommand,
 }
 
 func RunCommands(c *controller.Controller) {
@@ -219,13 +230,14 @@ func RunCommands(c *controller.Controller) {
 		}
 
 		in := make([]byte, cmd.InputSize)
-		for i := range cmd.InputSize {
+		for i := 0; i < int(cmd.InputSize); {
 			b, err := machine.Serial.ReadByte()
 			if err != nil {
-				println(err)
 				continue
 			}
+
 			in[i] = b
+			i++
 		}
 
 		err = cmd.Run(c, in)
@@ -236,7 +248,11 @@ func RunCommands(c *controller.Controller) {
 }
 
 func b2i(b byte) uint {
-	return uint(b - '0')
+	v := uint(b - '0')
+	if v < 1 || v > 9 {
+		return 0
+	}
+	return v
 }
 
 func readLine() []byte {
