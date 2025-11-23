@@ -173,7 +173,7 @@ var (
 		},
 	}
 	StepCommand = &Command{
-		Flag:      'A',
+		Flag:      's',
 		InputSize: 2,
 		Run: func(c *controller.Controller, b []byte) error {
 			s := int32(1)
