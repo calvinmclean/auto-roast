@@ -116,7 +116,10 @@ var (
 		InputSize: 1,
 		Run: func(c *controller.Controller, b []byte) error {
 			v := b2i(b[0])
+			// get the currently-set target, reset current position, then move to target
+			target, _ := c.Settings()
 			c.FixFan(v)
+			c.SetFan(target)
 			return nil
 		},
 	}
@@ -125,7 +128,10 @@ var (
 		InputSize: 1,
 		Run: func(c *controller.Controller, b []byte) error {
 			v := b2i(b[0])
+			// get the currently-set target, reset current position, then move to target
+			_, target := c.Settings()
 			c.FixPower(v)
+			c.SetPower(target)
 			return nil
 		},
 	}
@@ -198,6 +204,17 @@ var (
 			return nil
 		},
 	}
+	InitCommand = &Command{
+		Flag:      'I',
+		InputSize: 2,
+		Run: func(c *controller.Controller, b []byte) error {
+			fan := b2i(b[0])
+			power := b2i(b[1])
+			c.FixFan(fan)
+			c.FixPower(power)
+			return nil
+		},
+	}
 )
 
 var commands = []*Command{
@@ -214,6 +231,7 @@ var commands = []*Command{
 	TestCommand,
 	StepCommand,
 	FullRevolutionCommand,
+	InitCommand,
 }
 
 func RunCommands(c *controller.Controller) {

@@ -286,3 +286,8 @@ func levelStr[T uint | int](character string, level T) string {
 func (s *Controller) FullRev() {
 	s.stepper.Move(4096)
 }
+
+// Settings returns the current fan and power positions
+func (s *Controller) Settings() (uint, uint) {
+	return s.fan, s.power
+}
