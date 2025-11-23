@@ -27,6 +27,6 @@ type CalibrationConfig struct {
 	ServoPressDelay       time.Duration
 	ServoResetDelay       time.Duration
 	StepsPerIncrement     float32
-	BacklashSteps         int32
+	BacklashSteps         float32
 	DelayAfterStepperMove time.Duration
 }

@@ -240,17 +240,17 @@ func (s *Controller) IncreaseTime() {
 func (s *Controller) Move(n int32) {
 	rawMove := float32(n)*s.calibrationCfg.StepsPerIncrement + s.remainder
 
-	move := int32(math.Round(float64(rawMove)))
-	s.remainder = rawMove - float32(move)
-
 	// add or subtract backlash steps based on direction change
-	if s.lastDirection < 0 && move > 0 {
-		move += s.calibrationCfg.BacklashSteps
+	if s.lastDirection < 0 && rawMove > 0 {
+		rawMove += s.calibrationCfg.BacklashSteps
 		s.lastDirection = +1
-	} else if s.lastDirection > 0 && move < 0 {
-		move -= s.calibrationCfg.BacklashSteps
+	} else if s.lastDirection > 0 && rawMove < 0 {
+		rawMove -= s.calibrationCfg.BacklashSteps
 		s.lastDirection = -1
 	}
+
+	move := int32(math.Round(float64(rawMove)))
+	s.remainder = rawMove - float32(move)
 
 	s.stepper.Move(move)
 

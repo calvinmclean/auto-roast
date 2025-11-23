@@ -162,6 +162,11 @@ var (
 				for _, f := range funcs {
 					f()
 				}
+			case '2':
+				for range 10 {
+					c.SetFan(5)
+					c.SetFan(4)
+				}
 			}
 
 			return nil

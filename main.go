@@ -10,21 +10,23 @@ import (
 
 func main() {
 	stepperCfg := controller.StepperConfig{
-		Pins:     [4]machine.Pin{machine.GP0, machine.GP1, machine.GP2, machine.GP3},
-		StepMode: controller.StepModeHalf,
+		Pins:      [4]machine.Pin{machine.GP0, machine.GP1, machine.GP2, machine.GP3},
+		StepMode:  controller.StepModeHalf,
+		StepDelay: 2500 * time.Microsecond,
 	}
 
 	servoCfg := controller.ServoConfig{
 		PWM: machine.PWM2,
 		Pin: machine.GP4,
 	}
+	stepsPerIncrement := nominalStepsPerIncrement(30, 9, 8, 4096)
 	calibrationCfg := controller.CalibrationConfig{
 		ServoBasePosition:     15,
 		ServoClickPosition:    50,
-		ServoPressDelay:       150 * time.Millisecond,
+		ServoPressDelay:       200 * time.Millisecond,
 		ServoResetDelay:       250 * time.Millisecond,
-		StepsPerIncrement:     nominalStepsPerIncrement(30, 9, 8, 4096),
-		BacklashSteps:         70,
+		StepsPerIncrement:     stepsPerIncrement,
+		BacklashSteps:         stepsPerIncrement / 3,
 		DelayAfterStepperMove: 500 * time.Millisecond,
 	}
 
