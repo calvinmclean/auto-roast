@@ -252,7 +252,21 @@ func (s *Controller) Move(n int32) {
 	move := int32(math.Round(float64(rawMove)))
 	s.remainder = rawMove - float32(move)
 
+	// move forward a bit extra to make sure we "click" into place and then back up to expected position
+	backsteps := int32(s.calibrationCfg.StepsPerIncrement / 2)
+	var backstep int32
+	if move < 0 {
+		move -= backsteps
+		backstep = +backsteps
+	} else {
+		move += backsteps
+		backstep = -backsteps
+	}
+
 	s.stepper.Move(move)
+	time.Sleep(200 * time.Millisecond)
+	// Move back slightly
+	s.stepper.Move(backstep)
 
 	time.Sleep(s.calibrationCfg.DelayAfterStepperMove)
 }
