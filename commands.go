@@ -200,7 +200,7 @@ var (
 		Flag:      'R',
 		InputSize: 0,
 		Run: func(c *controller.Controller, b []byte) error {
-			c.FullRev()
+			c.MicroStep(4096)
 			return nil
 		},
 	}
@@ -212,6 +212,22 @@ var (
 			power := b2i(b[1])
 			c.FixFan(fan)
 			c.FixPower(power)
+			return nil
+		},
+	}
+	LeftCommand = &Command{
+		Flag:      0x1B,
+		InputSize: 2,
+		Run: func(c *controller.Controller, b []byte) error {
+			if b[0] != '[' {
+				return errors.New("invalid input")
+			}
+			switch b[1] {
+			case 'D':
+				c.MicroStep(5)
+			case 'C':
+				c.MicroStep(-5)
+			}
 			return nil
 		},
 	}
@@ -232,6 +248,7 @@ var commands = []*Command{
 	StepCommand,
 	FullRevolutionCommand,
 	InitCommand,
+	LeftCommand,
 }
 
 func RunCommands(c *controller.Controller) {

@@ -11,3 +11,8 @@ tasks:
     aliases: ["f"]
     cmds:
       - tinygo flash -target=pico
+
+  flash-monitor:
+    aliases: ["fm"]
+    cmds:
+      - tinygo flash -target=pico -monitor

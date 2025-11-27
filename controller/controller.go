@@ -297,8 +297,8 @@ func levelStr[T uint | int](character string, level T) string {
 	return character + string(byte(level)+'0')
 }
 
-func (s *Controller) FullRev() {
-	s.stepper.Move(4096)
+func (s *Controller) MicroStep(n int32) {
+	s.stepper.Move(n)
 }
 
 // Settings returns the current fan and power positions
