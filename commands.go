@@ -9,11 +9,10 @@ import (
 )
 
 type Command struct {
-	Flag      byte
-	InputSize uint
-	Run       func(*controller.Controller, []byte) error
-	// TODO: Add description and create Help Command
-	// Description string
+	Flag        byte
+	InputSize   uint
+	Run         func(*controller.Controller, []byte) error
+	Description string
 }
 
 var (
@@ -31,11 +30,11 @@ var (
 				if f <= 0 || f > 9 {
 					return errors.New("invalid input: " + string(input))
 				}
-
 				c.SetFan(f)
 			}
 			return nil
 		},
+		Description: "Set or adjust the fan speed. Input: '-', '+', or 1-9.",
 	}
 	SetPowerCommand = &Command{
 		Flag:      'P',
@@ -51,11 +50,11 @@ var (
 				if p <= 0 || p > 9 {
 					return errors.New("invalid input: " + string(input))
 				}
-
 				c.SetPower(p)
 			}
 			return nil
 		},
+		Description: "Set or adjust the power level. Input: '-', '+', or 1-9.",
 	}
 	SetModeCommand = &Command{
 		Flag:      'M',
@@ -73,6 +72,7 @@ var (
 			c.GoToMode(mode)
 			return nil
 		},
+		Description: "Switch control mode. Input: 'F' (Fan), 'P' (Power), 'T' (Timer).",
 	}
 	ClickCommand = &Command{
 		Flag:      'C',
@@ -81,6 +81,7 @@ var (
 			c.ClickButton()
 			return nil
 		},
+		Description: "Click the button. This does not change the device's memory of where it is positioned.",
 	}
 	StartCommand = &Command{
 		Flag:      'S',
@@ -88,6 +89,7 @@ var (
 		Run: func(c *controller.Controller, b []byte) error {
 			return c.Start()
 		},
+		Description: "Start roasting. This sets the timer to track durations of each change.",
 	}
 	DebugCommand = &Command{
 		Flag:      'D',
@@ -96,6 +98,7 @@ var (
 			c.Debug()
 			return nil
 		},
+		Description: "Print the current state.",
 	}
 	VerboseCommand = &Command{
 		Flag:      'V',
@@ -104,6 +107,7 @@ var (
 			c.Verbose()
 			return nil
 		},
+		Description: "Enable verbose output.",
 	}
 	IncreaseTimeCommand = &Command{
 		Flag:      'T',
@@ -112,6 +116,7 @@ var (
 			c.IncreaseTime()
 			return nil
 		},
+		Description: "Increase the timer value.",
 	}
 	FixFanCommand = &Command{
 		Flag:      'f',
@@ -124,6 +129,7 @@ var (
 			c.SetFan(target)
 			return nil
 		},
+		Description: "Fix the fan at a specific value and restore target. Input: 1-9.",
 	}
 	FixPowerCommand = &Command{
 		Flag:      'p',
@@ -136,6 +142,7 @@ var (
 			c.SetPower(target)
 			return nil
 		},
+		Description: "Fix the power at a specific value and restore target. Input: 1-9.",
 	}
 	TestCommand = &Command{
 		Flag:      'Z',
@@ -179,6 +186,7 @@ var (
 
 			return nil
 		},
+		Description: "Run test routines. Input: '1' (toggle test), '2' (fan test).",
 	}
 	StepCommand = &Command{
 		Flag:      's',
@@ -197,6 +205,7 @@ var (
 
 			return nil
 		},
+		Description: "Move stepper motor by steps. Input: '+' or '-', then step count (1-9).",
 	}
 	FullRevolutionCommand = &Command{
 		Flag:      'R',
@@ -205,6 +214,7 @@ var (
 			c.MicroStep(4096)
 			return nil
 		},
+		Description: "Move stepper motor a full revolution.",
 	}
 	InitCommand = &Command{
 		Flag:      'I',
@@ -216,6 +226,7 @@ var (
 			c.FixPower(power)
 			return nil
 		},
+		Description: "Initialize fan and power to specific values. Input: fan(1-9), power(1-9).",
 	}
 	MicroStepCommand = &Command{
 		Flag:      0x1B,
@@ -229,6 +240,25 @@ var (
 				c.MicroStep(5)
 			case 'C':
 				c.MicroStep(-5)
+			}
+			return nil
+		},
+		Description: "Move stepper motor by microsteps. Use left and right arrow keys.",
+	}
+	HelpCommand = &Command{
+		Flag:        'H',
+		InputSize:   0,
+		Description: "Show all available commands and their descriptions.",
+		Run: func(c *controller.Controller, b []byte) error {
+			println("Available Commands:")
+			for _, cmd := range commands {
+				flagStr := ""
+				if cmd.Flag >= 32 && cmd.Flag <= 126 {
+					flagStr = string(cmd.Flag)
+				} else {
+					flagStr = "0x" + string("0123456789ABCDEF"[(cmd.Flag>>4)&0xF]) + string("0123456789ABCDEF"[cmd.Flag&0xF])
+				}
+				println(flagStr + ": " + cmd.Description)
 			}
 			return nil
 		},
@@ -254,7 +284,9 @@ var commands = []*Command{
 }
 
 func RunCommands(c *controller.Controller) {
-	cmdMap := map[byte]*Command{}
+	cmdMap := map[byte]*Command{
+		HelpCommand.Flag: HelpCommand,
+	}
 
 	for _, cmd := range commands {
 		cmdMap[cmd.Flag] = cmd
