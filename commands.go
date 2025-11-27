@@ -12,6 +12,8 @@ type Command struct {
 	Flag      byte
 	InputSize uint
 	Run       func(*controller.Controller, []byte) error
+	// TODO: Add description and create Help Command
+	// Description string
 }
 
 var (
@@ -215,7 +217,7 @@ var (
 			return nil
 		},
 	}
-	LeftCommand = &Command{
+	MicroStepCommand = &Command{
 		Flag:      0x1B,
 		InputSize: 2,
 		Run: func(c *controller.Controller, b []byte) error {
@@ -248,7 +250,7 @@ var commands = []*Command{
 	StepCommand,
 	FullRevolutionCommand,
 	InitCommand,
-	LeftCommand,
+	MicroStepCommand,
 }
 
 func RunCommands(c *controller.Controller) {
