@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"autoroast/commands"
-	"autoroast/controller"
+	"autoroast/firmware/controller"
 )
 
 func main() {
