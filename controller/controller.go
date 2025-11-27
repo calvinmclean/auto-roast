@@ -103,12 +103,16 @@ func (s *Controller) ClickButton() {
 }
 
 // GoToMode will click the FreshRoast button until the target ControlMode is active
-func (s *Controller) GoToMode(target ControlMode) {
+func (s *Controller) GoToMode(target ControlMode) bool {
 	if s.verbose {
 		println(s.ts(), "GoToMode:", target)
 	}
 	if target == ControlModeUnknown {
-		return
+		return false
+	}
+
+	if s.currentControlMode == target {
+		return false
 	}
 
 	// If we have started running, then we need extra logic to see if we are in "select mode".
@@ -124,6 +128,8 @@ func (s *Controller) GoToMode(target ControlMode) {
 		s.ClickButton()
 		s.currentControlMode = s.currentControlMode.Next()
 	}
+
+	return true
 }
 
 // FixControlMode manually sets the ControlMode to account for errors
@@ -137,7 +143,9 @@ func (s *Controller) MoveFan(i int32) {
 	if s.verbose {
 		println(s.ts(), "MoveFan", i)
 	}
-	s.GoToMode(ControlModeFan)
+	if s.GoToMode(ControlModeFan) {
+		time.Sleep(200 * time.Millisecond)
+	}
 	s.Move(i)
 }
 
@@ -147,7 +155,9 @@ func (s *Controller) MovePower(i int32) {
 	if s.verbose {
 		println(s.ts(), "MovePower", i)
 	}
-	s.GoToMode(ControlModePower)
+	if s.GoToMode(ControlModePower) {
+		time.Sleep(200 * time.Millisecond)
+	}
 	s.Move(i)
 }
 

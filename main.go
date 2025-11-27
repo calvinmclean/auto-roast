@@ -27,7 +27,7 @@ func main() {
 		ServoResetDelay:       250 * time.Millisecond,
 		StepsPerIncrement:     stepsPerIncrement,
 		DelayAfterStepperMove: 500 * time.Millisecond,
-		BackstepRatio:         2.5,
+		BackstepRatio:         2,
 	}
 
 	state, err := controller.New(stepperCfg, servoCfg, calibrationCfg)
