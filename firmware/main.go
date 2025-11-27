@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"autoroast/commands"
+	"autoroast/firmware/commands"
 	"autoroast/firmware/controller"
 )
 

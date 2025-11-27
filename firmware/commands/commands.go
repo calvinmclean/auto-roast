@@ -286,6 +286,14 @@ var (
 	}
 )
 
+func b2i(b byte) uint {
+	v := uint(b - '0')
+	if v < 1 || v > 9 {
+		return 0
+	}
+	return v
+}
+
 var commands = []*Command{
 	SetFanCommand,
 	SetPowerCommand,
@@ -340,12 +348,4 @@ func Run(c Controller) {
 			println("error:", err.Error())
 		}
 	}
-}
-
-func b2i(b byte) uint {
-	v := uint(b - '0')
-	if v < 1 || v > 9 {
-		return 0
-	}
-	return v
 }
