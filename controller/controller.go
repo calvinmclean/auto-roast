@@ -2,8 +2,11 @@ package controller
 
 import (
 	"errors"
+	"machine"
 	"math"
 	"time"
+
+	"autoroast"
 
 	"tinygo.org/x/drivers/servo"
 )
@@ -14,7 +17,7 @@ type Controller struct {
 	servo          servo.Servo
 	calibrationCfg CalibrationConfig
 
-	currentControlMode ControlMode
+	currentControlMode autoroast.ControlMode
 	fan                uint
 	power              uint
 
@@ -52,7 +55,7 @@ func New(stepperCfg StepperConfig, servoCfg ServoConfig, calibrationCfg Calibrat
 		stepper:            stepper,
 		servo:              myServo,
 		calibrationCfg:     calibrationCfg,
-		currentControlMode: ControlModeFan,
+		currentControlMode: autoroast.ControlModeFan,
 		fan:                0,
 		power:              0,
 		startTime:          time.Time{},
@@ -103,11 +106,11 @@ func (c *Controller) ClickButton() {
 }
 
 // GoToMode will click the FreshRoast button until the target ControlMode is active
-func (c *Controller) GoToMode(target ControlMode) bool {
+func (c *Controller) GoToMode(target autoroast.ControlMode) bool {
 	if c.verbose {
 		println(c.ts(), "GoToMode:", target)
 	}
-	if target == ControlModeUnknown {
+	if target == autoroast.ControlModeUnknown {
 		return false
 	}
 
@@ -133,7 +136,7 @@ func (c *Controller) GoToMode(target ControlMode) bool {
 }
 
 // FixControlMode manually sets the ControlMode to account for errors
-func (c *Controller) FixControlMode(cm ControlMode) {
+func (c *Controller) FixControlMode(cm autoroast.ControlMode) {
 	c.currentControlMode = cm
 }
 
@@ -143,7 +146,7 @@ func (c *Controller) MoveFan(i int32) {
 	if c.verbose {
 		println(c.ts(), "MoveFan", i)
 	}
-	if c.GoToMode(ControlModeFan) {
+	if c.GoToMode(autoroast.ControlModeFan) {
 		time.Sleep(200 * time.Millisecond)
 	}
 	c.Move(i)
@@ -155,7 +158,7 @@ func (c *Controller) MovePower(i int32) {
 	if c.verbose {
 		println(c.ts(), "MovePower", i)
 	}
-	if c.GoToMode(ControlModePower) {
+	if c.GoToMode(autoroast.ControlModePower) {
 		time.Sleep(200 * time.Millisecond)
 	}
 	c.Move(i)
@@ -167,7 +170,7 @@ func (c *Controller) MoveTimer(i int32) {
 	if c.verbose {
 		println(c.ts(), "MoveTimer", i)
 	}
-	c.GoToMode(ControlModeTimer)
+	c.GoToMode(autoroast.ControlModeTimer)
 	c.Move(i)
 }
 
@@ -237,7 +240,7 @@ func (c *Controller) IncreaseTime() {
 	if c.verbose {
 		println(c.ts(), "IncreaseTime")
 	}
-	c.GoToMode(ControlModeTimer)
+	c.GoToMode(autoroast.ControlModeTimer)
 	c.Move(5)
 }
 
@@ -305,4 +308,8 @@ func (c *Controller) MicroStep(n int32) {
 // Settings returns the current fan and power positions
 func (c *Controller) Settings() (uint, uint) {
 	return c.fan, c.power
+}
+
+func (c *Controller) ReadByte() (byte, error) {
+	return machine.Serial.ReadByte()
 }

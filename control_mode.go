@@ -1,4 +1,4 @@
-package controller
+package autoroast
 
 // ControlMode is the mode that the FreshRoast's display is showing
 type ControlMode int
