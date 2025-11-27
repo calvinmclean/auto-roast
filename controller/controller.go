@@ -24,10 +24,6 @@ type Controller struct {
 	// know if the first click will enable changing currentControlMode or will increment the ControlMode
 	lastClick time.Time
 
-	// lastDirection tells if the stepper was previously moving forwards or backwards. It is useful
-	// for backlash compensation. -1, 0, +1
-	lastDirection int
-
 	verbose bool
 
 	remainder float32
@@ -62,7 +58,6 @@ func New(stepperCfg StepperConfig, servoCfg ServoConfig, calibrationCfg Calibrat
 		startTime:          time.Time{},
 		lastClick:          time.Time{},
 		verbose:            false,
-		lastDirection:      +1,
 	}, nil
 }
 
@@ -236,37 +231,33 @@ func (s *Controller) IncreaseTime() {
 	s.Move(5)
 }
 
-// Move simply moves the stepper by the specified number of increments
+// Move moves the stepper by the specified number of increments
 func (s *Controller) Move(n int32) {
 	rawMove := float32(n)*s.calibrationCfg.StepsPerIncrement + s.remainder
-
-	// add or subtract backlash steps based on direction change
-	if s.lastDirection < 0 && rawMove > 0 {
-		rawMove += s.calibrationCfg.BacklashSteps
-		s.lastDirection = +1
-	} else if s.lastDirection > 0 && rawMove < 0 {
-		rawMove -= s.calibrationCfg.BacklashSteps
-		s.lastDirection = -1
-	}
 
 	move := int32(math.Round(float64(rawMove)))
 	s.remainder = rawMove - float32(move)
 
 	// move forward a bit extra to make sure we "click" into place and then back up to expected position
-	backsteps := int32(s.calibrationCfg.StepsPerIncrement / 2)
-	var backstep int32
-	if move < 0 {
-		move -= backsteps
-		backstep = +backsteps
-	} else {
-		move += backsteps
-		backstep = -backsteps
+	var backsteps int32
+	if s.calibrationCfg.BackstepRatio > 0 {
+		numBacksteps := int32(s.calibrationCfg.StepsPerIncrement / s.calibrationCfg.BackstepRatio)
+		if move < 0 {
+			move -= backsteps
+			backsteps = +numBacksteps
+		} else {
+			move += backsteps
+			backsteps = -numBacksteps
+		}
 	}
 
 	s.stepper.Move(move)
-	time.Sleep(200 * time.Millisecond)
-	// Move back slightly
-	s.stepper.Move(backstep)
+
+	if backsteps != 0 {
+		time.Sleep(200 * time.Millisecond)
+		// Move back slightly
+		s.stepper.Move(backsteps)
+	}
 
 	time.Sleep(s.calibrationCfg.DelayAfterStepperMove)
 }

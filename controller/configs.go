@@ -9,8 +9,9 @@ import (
 
 // StepperConfig ...
 type StepperConfig struct {
-	Pins      [4]machine.Pin
-	StepMode  StepMode
+	Pins     [4]machine.Pin
+	StepMode StepMode
+	// TODO: replace with target RPM and calculate StepDelay
 	StepDelay time.Duration
 }
 
@@ -27,6 +28,6 @@ type CalibrationConfig struct {
 	ServoPressDelay       time.Duration
 	ServoResetDelay       time.Duration
 	StepsPerIncrement     float32
-	BacklashSteps         float32
 	DelayAfterStepperMove time.Duration
+	BackstepRatio         float32
 }

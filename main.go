@@ -21,13 +21,13 @@ func main() {
 	}
 	stepsPerIncrement := nominalStepsPerIncrement(30, 9, 8, 4096)
 	calibrationCfg := controller.CalibrationConfig{
-		ServoBasePosition:  15,
-		ServoClickPosition: 55,
-		ServoPressDelay:    200 * time.Millisecond,
-		ServoResetDelay:    250 * time.Millisecond,
-		StepsPerIncrement:  stepsPerIncrement,
-		// BacklashSteps:         stepsPerIncrement / 2,
+		ServoBasePosition:     15,
+		ServoClickPosition:    55,
+		ServoPressDelay:       200 * time.Millisecond,
+		ServoResetDelay:       250 * time.Millisecond,
+		StepsPerIncrement:     stepsPerIncrement,
 		DelayAfterStepperMove: 500 * time.Millisecond,
+		BackstepRatio:         2.5,
 	}
 
 	state, err := controller.New(stepperCfg, servoCfg, calibrationCfg)
