@@ -62,137 +62,137 @@ func New(stepperCfg StepperConfig, servoCfg ServoConfig, calibrationCfg Calibrat
 }
 
 // Start will set the start time and ensures that everything is ready to go
-func (s *Controller) Start() error {
-	if s.fan == 0 || s.power == 0 {
+func (c *Controller) Start() error {
+	if c.fan == 0 || c.power == 0 {
 		return errors.New("set initial fan/power before starting")
 	}
-	s.startTime = time.Now()
+	c.startTime = time.Now()
 
-	println(s.ts(), "Started...")
+	println(c.ts(), "Started...")
 
 	return nil
 }
 
 // Duration returns the duration that this has been running
-func (s *Controller) Duration() time.Duration {
-	return time.Since(s.startTime)
+func (c *Controller) Duration() time.Duration {
+	return time.Since(c.startTime)
 }
 
 // ClickButton uses the servo motor to click the FreshRoast button to enable setting changes
-func (s *Controller) ClickButton() {
-	if s.verbose {
-		println(s.ts(), "ClickButton")
+func (c *Controller) ClickButton() {
+	if c.verbose {
+		println(c.ts(), "ClickButton")
 	}
 
-	err := s.servo.SetAngle(s.calibrationCfg.ServoClickPosition)
+	err := c.servo.SetAngle(c.calibrationCfg.ServoClickPosition)
 	if err != nil {
-		println(s.ts(), "error setting servo angle:", err.Error())
+		println(c.ts(), "error setting servo angle:", err.Error())
 		return
 	}
 
-	time.Sleep(s.calibrationCfg.ServoPressDelay)
+	time.Sleep(c.calibrationCfg.ServoPressDelay)
 
-	err = s.servo.SetAngle(s.calibrationCfg.ServoBasePosition)
+	err = c.servo.SetAngle(c.calibrationCfg.ServoBasePosition)
 	if err != nil {
-		println(s.ts(), "error resetting servo angle:", err.Error())
+		println(c.ts(), "error resetting servo angle:", err.Error())
 		return
 	}
 
-	s.lastClick = time.Now()
-	time.Sleep(s.calibrationCfg.ServoResetDelay)
+	c.lastClick = time.Now()
+	time.Sleep(c.calibrationCfg.ServoResetDelay)
 }
 
 // GoToMode will click the FreshRoast button until the target ControlMode is active
-func (s *Controller) GoToMode(target ControlMode) bool {
-	if s.verbose {
-		println(s.ts(), "GoToMode:", target)
+func (c *Controller) GoToMode(target ControlMode) bool {
+	if c.verbose {
+		println(c.ts(), "GoToMode:", target)
 	}
 	if target == ControlModeUnknown {
 		return false
 	}
 
-	if s.currentControlMode == target {
+	if c.currentControlMode == target {
 		return false
 	}
 
 	// If we have started running, then we need extra logic to see if we are in "select mode".
 	// This is required because the "select mode" automatically stops after ~3s, so we need to
 	// click an extra time to get back into "select mode"
-	if !s.startTime.IsZero() {
-		if time.Since(s.lastClick) > 3*time.Second {
-			s.ClickButton()
+	if !c.startTime.IsZero() {
+		if time.Since(c.lastClick) > 3*time.Second {
+			c.ClickButton()
 		}
 	}
 
-	for s.currentControlMode != target {
-		s.ClickButton()
-		s.currentControlMode = s.currentControlMode.Next()
+	for c.currentControlMode != target {
+		c.ClickButton()
+		c.currentControlMode = c.currentControlMode.Next()
 	}
 
 	return true
 }
 
 // FixControlMode manually sets the ControlMode to account for errors
-func (s *Controller) FixControlMode(cm ControlMode) {
-	s.currentControlMode = cm
+func (c *Controller) FixControlMode(cm ControlMode) {
+	c.currentControlMode = cm
 }
 
 // MoveFan controls the FreshRoast to move the fan value by the specified number of increments.
 // It does not change the "State" of the device. This is useful for fixing off-by-one movements
-func (s *Controller) MoveFan(i int32) {
-	if s.verbose {
-		println(s.ts(), "MoveFan", i)
+func (c *Controller) MoveFan(i int32) {
+	if c.verbose {
+		println(c.ts(), "MoveFan", i)
 	}
-	if s.GoToMode(ControlModeFan) {
+	if c.GoToMode(ControlModeFan) {
 		time.Sleep(200 * time.Millisecond)
 	}
-	s.Move(i)
+	c.Move(i)
 }
 
 // MovePower controls the FreshRoast to move the power value by the specified number of increments.
 // It does not change the "State" of the device. This is useful for fixing off-by-one movements
-func (s *Controller) MovePower(i int32) {
-	if s.verbose {
-		println(s.ts(), "MovePower", i)
+func (c *Controller) MovePower(i int32) {
+	if c.verbose {
+		println(c.ts(), "MovePower", i)
 	}
-	if s.GoToMode(ControlModePower) {
+	if c.GoToMode(ControlModePower) {
 		time.Sleep(200 * time.Millisecond)
 	}
-	s.Move(i)
+	c.Move(i)
 }
 
 // MoveTimer controls the FreshRoast to move the timer value by the specified number of increments.
 // If this exceeds the bounds, it will still move by the number of increments.
-func (s *Controller) MoveTimer(i int32) {
-	if s.verbose {
-		println(s.ts(), "MoveTimer", i)
+func (c *Controller) MoveTimer(i int32) {
+	if c.verbose {
+		println(c.ts(), "MoveTimer", i)
 	}
-	s.GoToMode(ControlModeTimer)
-	s.Move(i)
+	c.GoToMode(ControlModeTimer)
+	c.Move(i)
 }
 
 // FixPower manually sets the current power to the specified value to account for errors. It does not control the device
-func (s *Controller) FixPower(p uint) {
-	s.power = p
+func (c *Controller) FixPower(p uint) {
+	c.power = p
 }
 
 // FixFan manually sets the current fan to the specified value to account for errors. It does not control the device
-func (s *Controller) FixFan(f uint) {
-	s.fan = f
+func (c *Controller) FixFan(f uint) {
+	c.fan = f
 }
 
 // SetFan sets the FreshRoast fan to the specified value
-func (s *Controller) SetFan(f uint) {
-	if s.verbose {
-		println(s.ts(), "SetFan", f)
+func (c *Controller) SetFan(f uint) {
+	if c.verbose {
+		println(c.ts(), "SetFan", f)
 	}
 	if f < 1 || f > 9 {
 		return
 	}
 
-	println(s.ts(), levelStr("F", f))
+	println(c.ts(), levelStr("F", f))
 
-	delta := int32(f) - int32(s.fan)
+	delta := int32(f) - int32(c.fan)
 
 	// When moving to extremes, we can move extra to re-calibrate and account for inaccuracy
 	if f == 9 {
@@ -202,24 +202,24 @@ func (s *Controller) SetFan(f uint) {
 		delta -= 3
 	}
 
-	s.MoveFan(delta)
+	c.MoveFan(delta)
 
-	s.fan = f
+	c.fan = f
 }
 
 // SetPower sets the FreshRoast power to the specified value
-func (s *Controller) SetPower(p uint) {
-	if s.verbose {
-		println(s.ts(), "SetPower", p)
+func (c *Controller) SetPower(p uint) {
+	if c.verbose {
+		println(c.ts(), "SetPower", p)
 	}
 	if p < 1 || p > 9 {
 		return
 	}
 
-	println(s.ts(), levelStr("P", p))
+	println(c.ts(), levelStr("P", p))
 
 	// When moving to extremes, we can move extra to re-calibrate and account for inaccuracy
-	delta := int32(p) - int32(s.power)
+	delta := int32(p) - int32(c.power)
 	if p == 9 {
 		delta += 3
 	}
@@ -227,31 +227,31 @@ func (s *Controller) SetPower(p uint) {
 		delta -= 3
 	}
 
-	s.MovePower(delta)
+	c.MovePower(delta)
 
-	s.power = p
+	c.power = p
 }
 
 // IncreaseTime just increases the time on device by 5m
-func (s *Controller) IncreaseTime() {
-	if s.verbose {
-		println(s.ts(), "IncreaseTime")
+func (c *Controller) IncreaseTime() {
+	if c.verbose {
+		println(c.ts(), "IncreaseTime")
 	}
-	s.GoToMode(ControlModeTimer)
-	s.Move(5)
+	c.GoToMode(ControlModeTimer)
+	c.Move(5)
 }
 
 // Move moves the stepper by the specified number of increments
-func (s *Controller) Move(n int32) {
-	rawMove := float32(n)*s.calibrationCfg.StepsPerIncrement + s.remainder
+func (c *Controller) Move(n int32) {
+	rawMove := float32(n)*c.calibrationCfg.StepsPerIncrement + c.remainder
 
 	move := int32(math.Round(float64(rawMove)))
-	s.remainder = rawMove - float32(move)
+	c.remainder = rawMove - float32(move)
 
 	// move forward a bit extra to make sure we "click" into place and then back up to expected position
 	var backsteps int32
-	if s.calibrationCfg.BackstepRatio > 0 {
-		numBacksteps := int32(s.calibrationCfg.StepsPerIncrement / s.calibrationCfg.BackstepRatio)
+	if c.calibrationCfg.BackstepRatio > 0 {
+		numBacksteps := int32(c.calibrationCfg.StepsPerIncrement / c.calibrationCfg.BackstepRatio)
 		if move < 0 {
 			move -= backsteps
 			backsteps = +numBacksteps
@@ -261,36 +261,36 @@ func (s *Controller) Move(n int32) {
 		}
 	}
 
-	s.stepper.Move(move)
+	c.stepper.Move(move)
 
 	if backsteps != 0 {
 		time.Sleep(200 * time.Millisecond)
 		// Move back slightly
-		s.stepper.Move(backsteps)
+		c.stepper.Move(backsteps)
 	}
 
-	time.Sleep(s.calibrationCfg.DelayAfterStepperMove)
+	time.Sleep(c.calibrationCfg.DelayAfterStepperMove)
 }
 
 // Debug pritns out details of the Controller's state
-func (s *Controller) Debug() {
-	d := s.ts() + " " + levelStr("F", s.fan) + "/" + levelStr("P", s.power)
-	d += " mode=" + s.currentControlMode.String()
+func (c *Controller) Debug() {
+	d := c.ts() + " " + levelStr("F", c.fan) + "/" + levelStr("P", c.power)
+	d += " mode=" + c.currentControlMode.String()
 	println(d)
 }
 
 // Verbose sets the Controller to Verbose mode and increases logging
-func (s *Controller) Verbose() {
-	s.verbose = true
-	println(s.ts(), "Set Verbose Mode")
+func (c *Controller) Verbose() {
+	c.verbose = true
+	println(c.ts(), "Set Verbose Mode")
 }
 
 // ts returns the duration timestamp for logging
-func (s *Controller) ts() string {
-	if s.startTime.IsZero() {
+func (c *Controller) ts() string {
+	if c.startTime.IsZero() {
 		return "[-]"
 	}
-	return "[" + s.Duration().String() + "]"
+	return "[" + c.Duration().String() + "]"
 }
 
 // levelStr formats a power/fan level setting like F9 or P9
@@ -298,11 +298,11 @@ func levelStr[T uint | int](character string, level T) string {
 	return character + string(byte(level)+'0')
 }
 
-func (s *Controller) MicroStep(n int32) {
-	s.stepper.Move(n)
+func (c *Controller) MicroStep(n int32) {
+	c.stepper.Move(n)
 }
 
 // Settings returns the current fan and power positions
-func (s *Controller) Settings() (uint, uint) {
-	return s.fan, s.power
+func (c *Controller) Settings() (uint, uint) {
+	return c.fan, c.power
 }

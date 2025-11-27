@@ -10,9 +10,14 @@ tasks:
   flash:
     aliases: ["f"]
     cmds:
-      - tinygo flash -target=pico
+      - tinygo flash -target=pico ./firmware
 
   flash-monitor:
     aliases: ["fm"]
     cmds:
-      - tinygo flash -target=pico -monitor
+      - tinygo flash -target=pico -monitor ./firmware
+
+  build:
+    aliases: ["b"]
+    cmds:
+      - tinygo build -o .build/auto-rost.elf -target=pico ./firmware

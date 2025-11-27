@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"autoroast/commands"
 	"autoroast/controller"
 )
 
@@ -30,12 +31,12 @@ func main() {
 		BackstepRatio:         2,
 	}
 
-	state, err := controller.New(stepperCfg, servoCfg, calibrationCfg)
+	c, err := controller.New(stepperCfg, servoCfg, calibrationCfg)
 	if err != nil {
 		panic(err)
 	}
 
-	RunCommands(&state)
+	commands.Run(&c)
 }
 
 // nominalStepsPerIncrement returns the rounded nominal microsteps required

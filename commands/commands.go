@@ -1,4 +1,4 @@
-package main
+package commands
 
 import (
 	"errors"
@@ -283,7 +283,7 @@ var commands = []*Command{
 	MicroStepCommand,
 }
 
-func RunCommands(c *controller.Controller) {
+func Run(c *controller.Controller) {
 	cmdMap := map[byte]*Command{
 		HelpCommand.Flag: HelpCommand,
 	}
