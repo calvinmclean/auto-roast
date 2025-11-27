@@ -10,12 +10,12 @@ import (
 type Command struct {
 	Flag        byte
 	InputSize   uint
-	Run         func(Controller, []byte) error
+	Run         func(Device, []byte) error
 	Description string
 }
 
-// Controller is used to control a device
-type Controller interface {
+// Device is used to control a device
+type Device interface {
 	MoveFan(int32)
 	SetFan(uint)
 	MovePower(int32)
@@ -40,7 +40,7 @@ var (
 	SetFanCommand = &Command{
 		Flag:      'F',
 		InputSize: 1,
-		Run: func(c Controller, input []byte) error {
+		Run: func(c Device, input []byte) error {
 			switch in := input[0]; in {
 			case '-':
 				c.MoveFan(-1)
@@ -60,7 +60,7 @@ var (
 	SetPowerCommand = &Command{
 		Flag:      'P',
 		InputSize: 1,
-		Run: func(c Controller, input []byte) error {
+		Run: func(c Device, input []byte) error {
 			switch in := input[0]; in {
 			case '-':
 				c.MovePower(-1)
@@ -80,7 +80,7 @@ var (
 	SetModeCommand = &Command{
 		Flag:      'M',
 		InputSize: 1,
-		Run: func(c Controller, input []byte) error {
+		Run: func(c Device, input []byte) error {
 			mode := autoroast.ControlModeUnknown
 			switch in := input[0]; in {
 			case 'F':
@@ -98,7 +98,7 @@ var (
 	ClickCommand = &Command{
 		Flag:      'C',
 		InputSize: 0,
-		Run: func(c Controller, input []byte) error {
+		Run: func(c Device, input []byte) error {
 			c.ClickButton()
 			return nil
 		},
@@ -107,7 +107,7 @@ var (
 	StartCommand = &Command{
 		Flag:      'S',
 		InputSize: 0,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			return c.Start()
 		},
 		Description: "Start roasting. This sets the timer to track durations of each change.",
@@ -115,7 +115,7 @@ var (
 	DebugCommand = &Command{
 		Flag:      'D',
 		InputSize: 0,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			c.Debug()
 			return nil
 		},
@@ -124,7 +124,7 @@ var (
 	VerboseCommand = &Command{
 		Flag:      'V',
 		InputSize: 0,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			c.Verbose()
 			return nil
 		},
@@ -133,7 +133,7 @@ var (
 	IncreaseTimeCommand = &Command{
 		Flag:      'T',
 		InputSize: 0,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			c.IncreaseTime()
 			return nil
 		},
@@ -142,7 +142,7 @@ var (
 	FixFanCommand = &Command{
 		Flag:      'f',
 		InputSize: 1,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			v := b2i(b[0])
 			// get the currently-set target, reset current position, then move to target
 			target, _ := c.Settings()
@@ -155,7 +155,7 @@ var (
 	FixPowerCommand = &Command{
 		Flag:      'p',
 		InputSize: 1,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			v := b2i(b[0])
 			// get the currently-set target, reset current position, then move to target
 			_, target := c.Settings()
@@ -168,7 +168,7 @@ var (
 	TestCommand = &Command{
 		Flag:      'Z',
 		InputSize: 1,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			test := byte('1')
 			if len(b) > 0 {
 				test = b[0]
@@ -212,7 +212,7 @@ var (
 	StepCommand = &Command{
 		Flag:      's',
 		InputSize: 2,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			s := int32(1)
 			if b[0] == '-' {
 				s = -1
@@ -231,7 +231,7 @@ var (
 	FullRevolutionCommand = &Command{
 		Flag:      'R',
 		InputSize: 0,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			c.MicroStep(4096)
 			return nil
 		},
@@ -240,7 +240,7 @@ var (
 	InitCommand = &Command{
 		Flag:      'I',
 		InputSize: 2,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			fan := b2i(b[0])
 			power := b2i(b[1])
 			c.FixFan(fan)
@@ -252,7 +252,7 @@ var (
 	MicroStepCommand = &Command{
 		Flag:      0x1B,
 		InputSize: 2,
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			if b[0] != '[' {
 				return errors.New("invalid input")
 			}
@@ -270,7 +270,7 @@ var (
 		Flag:        'H',
 		InputSize:   0,
 		Description: "Show all available commands and their descriptions.",
-		Run: func(c Controller, b []byte) error {
+		Run: func(c Device, b []byte) error {
 			println("Available Commands:")
 			for _, cmd := range commands {
 				flagStr := ""
@@ -312,7 +312,7 @@ var commands = []*Command{
 	MicroStepCommand,
 }
 
-func Run(c Controller) {
+func Run(d Device) {
 	cmdMap := map[byte]*Command{
 		HelpCommand.Flag: HelpCommand,
 	}
@@ -322,7 +322,7 @@ func Run(c Controller) {
 	}
 
 	for {
-		cmdIn, err := c.ReadByte()
+		cmdIn, err := d.ReadByte()
 		if err != nil {
 			continue
 		}
@@ -334,7 +334,7 @@ func Run(c Controller) {
 
 		in := make([]byte, cmd.InputSize)
 		for i := 0; i < int(cmd.InputSize); {
-			b, err := c.ReadByte()
+			b, err := d.ReadByte()
 			if err != nil {
 				continue
 			}
@@ -343,7 +343,7 @@ func Run(c Controller) {
 			i++
 		}
 
-		err = cmd.Run(c, in)
+		err = cmd.Run(d, in)
 		if err != nil {
 			println("error:", err.Error())
 		}

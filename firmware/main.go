@@ -6,22 +6,22 @@ import (
 	"time"
 
 	"autoroast/firmware/commands"
-	"autoroast/firmware/controller"
+	"autoroast/firmware/device"
 )
 
 func main() {
-	stepperCfg := controller.StepperConfig{
+	stepperCfg := device.StepperConfig{
 		Pins:      [4]machine.Pin{machine.GP0, machine.GP1, machine.GP2, machine.GP3},
-		StepMode:  controller.StepModeHalf,
+		StepMode:  device.StepModeHalf,
 		StepDelay: 3000 * time.Microsecond,
 	}
 
-	servoCfg := controller.ServoConfig{
+	servoCfg := device.ServoConfig{
 		PWM: machine.PWM2,
 		Pin: machine.GP4,
 	}
 	stepsPerIncrement := nominalStepsPerIncrement(30, 9, 8, 4096)
-	calibrationCfg := controller.CalibrationConfig{
+	calibrationCfg := device.CalibrationConfig{
 		ServoBasePosition:     15,
 		ServoClickPosition:    55,
 		ServoPressDelay:       200 * time.Millisecond,
@@ -31,12 +31,12 @@ func main() {
 		BackstepRatio:         2,
 	}
 
-	c, err := controller.New(stepperCfg, servoCfg, calibrationCfg)
+	d, err := device.New(stepperCfg, servoCfg, calibrationCfg)
 	if err != nil {
 		panic(err)
 	}
 
-	commands.Run(&c)
+	commands.Run(&d)
 }
 
 // nominalStepsPerIncrement returns the rounded nominal microsteps required
