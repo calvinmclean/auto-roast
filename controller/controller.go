@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.bug.st/serial"
+	"go.bug.st/serial/enumerator"
 )
 
 type Controller struct {
@@ -23,23 +24,32 @@ type Config struct {
 	SerialPort  string
 	BaudRate    int
 	TWChartAddr string
+
+	ignoreSerial bool
 }
 
 func NewFromEnv() (Controller, error) {
 	serialPort := os.Getenv("SERIAL_PORT")
 	baudRateStr := os.Getenv("BAUD_RATE")
 	twchartAddr := os.Getenv("TWCHART_ADDR")
+	// ignoreSerial allows ignoring missing serial port for debugging the program without a serial connection
+	ignoreSerial := os.Getenv("IGNORE_SERIAL") == "true"
 
 	// Find default serial port if not set
 	if serialPort == "" {
-		ports, err := serial.GetPortsList()
+		ports, err := enumerator.GetDetailedPortsList()
 		if err != nil {
 			return Controller{}, fmt.Errorf("error getting serial ports: %w", err)
 		}
-		if len(ports) == 0 {
-			return Controller{}, fmt.Errorf("no serial ports found")
+
+		for _, p := range ports {
+			if p.IsUSB {
+				serialPort = p.Name
+			}
 		}
-		serialPort = ports[0]
+	}
+	if serialPort == "" && !ignoreSerial {
+		return Controller{}, errors.New("no serial port found")
 	}
 
 	// Parse baud rate, default to 115200
@@ -54,9 +64,10 @@ func NewFromEnv() (Controller, error) {
 	}
 
 	cfg := Config{
-		SerialPort:  serialPort,
-		BaudRate:    baudRate,
-		TWChartAddr: twchartAddr,
+		SerialPort:   serialPort,
+		BaudRate:     baudRate,
+		TWChartAddr:  twchartAddr,
+		ignoreSerial: ignoreSerial,
 	}
 	return New(cfg)
 }
@@ -67,7 +78,7 @@ func New(cfg Config) (Controller, error) {
 	}
 
 	port, err := serial.Open(cfg.SerialPort, mode)
-	if err != nil {
+	if err != nil && !cfg.ignoreSerial {
 		return Controller{}, fmt.Errorf("unexpected error opening serial connection: %w", err)
 	}
 
@@ -77,6 +88,9 @@ func New(cfg Config) (Controller, error) {
 }
 
 func (c Controller) Close() error {
+	if c.port == nil {
+		return nil
+	}
 	return c.port.Close()
 }
 

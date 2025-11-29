@@ -25,6 +25,7 @@ tasks:
   run:
     aliases: ["r"]
     env:
+      IGNORE_SERIAL: true
       TWCHART_ADDR: http://localhost:8080
       # TWCHART_ADDR: http://server.local:8087
     cmds:
