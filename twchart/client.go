@@ -20,9 +20,11 @@ type Client struct {
 	sessionID string
 }
 
+// the alias is used because the twchart.Session has UnmarshalText which invalidates UnmarshalJSON
+type sessionAlias twchart.Session
 type session struct {
 	babyapi.DefaultResource
-	Session twchart.Session
+	Session sessionAlias
 }
 
 func NewClient(addr string) Client {
@@ -32,11 +34,11 @@ func NewClient(addr string) Client {
 
 func (c *Client) CreateSession(ctx context.Context, beanName string, probes Probes) (string, error) {
 	resp, err := c.client.Post(ctx, &session{
-		Session: twchart.Session{
+		Session: sessionAlias(twchart.Session{
 			Name:   beanName,
 			Date:   time.Now(),
 			Probes: []twchart.Probe(probes),
-		},
+		}),
 	})
 	if err != nil {
 		return "", err
@@ -48,9 +50,9 @@ func (c *Client) CreateSession(ctx context.Context, beanName string, probes Prob
 }
 
 func (c Client) SetStartTime(ctx context.Context, startTime time.Time) error {
-	_, err := c.client.Patch(ctx, c.sessionID, &session{Session: twchart.Session{
+	_, err := c.client.Patch(ctx, c.sessionID, &session{Session: sessionAlias(twchart.Session{
 		StartTime: startTime,
-	}})
+	})})
 	return err
 }
 
@@ -72,11 +74,11 @@ func (c Client) AddStage(ctx context.Context, name string, now time.Time) error 
 	return c.makeRequest(ctx, url, s)
 }
 
-func (c Client) Finish(ctx context.Context) error {
+func (c Client) Done(ctx context.Context) error {
 	url, _ := c.client.URL(c.sessionID)
-	url += "/finish"
+	url += "/done"
 
-	return c.makeRequest(ctx, url, nil)
+	return c.makeRequest(ctx, url, map[string]any{"time": time.Now()})
 }
 
 func (c Client) makeRequest(ctx context.Context, url string, body any) error {

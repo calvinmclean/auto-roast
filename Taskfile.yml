@@ -21,3 +21,10 @@ tasks:
     aliases: ["b"]
     cmds:
       - tinygo build -o .build/auto-rost.elf -target=pico ./firmware
+
+  run:
+    aliases: ["r"]
+    env:
+      TWCHART_ADDR: http://server.local:8087
+    cmds:
+      - go run cmd/auto-roast/main.go
