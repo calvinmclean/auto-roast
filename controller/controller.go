@@ -4,6 +4,8 @@ import (
 	"autoroast/twchart"
 	"bufio"
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -24,7 +26,6 @@ type Config struct {
 }
 
 func NewFromEnv() (Controller, error) {
-
 	serialPort := os.Getenv("SERIAL_PORT")
 	baudRateStr := os.Getenv("BAUD_RATE")
 	twchartAddr := os.Getenv("TWCHART_ADDR")
@@ -94,29 +95,47 @@ func (c Controller) passthroughCommand(in []byte) (string, error) {
 }
 
 func (c Controller) Run(ctx context.Context) error {
-	sessionID, err := c.twchartClient.CreateSession(ctx, "Test Bean", twchart.Probes{
-		{
-			Name:     "Ambient",
-			Position: 1,
-		},
-		{
-			Name:     "Roaster",
-			Position: 2,
-		},
-	})
+	var sessionName, probesInput string
+	flag.StringVar(&sessionName, "session", "", "Session name for TWChart")
+	flag.StringVar(&probesInput, "probes", "", "Set probe mapping in format \"1=Name,2=Name,...\". Default is 1=Ambient,2=Beans")
+	flag.Parse()
+	if sessionName == "" {
+		return errors.New("missing -session")
+	}
+
+	probes := twchart.Probes{
+		{Name: "Ambient", Position: 1},
+		{Name: "Beans", Position: 2},
+	}
+	if probesInput != "" {
+		var err error
+		probes, err = twchart.ParseProbes(probesInput)
+		if err != nil {
+			return fmt.Errorf("invalid input for probes: %w", err)
+		}
+	}
+
+	sessionID, err := c.twchartClient.CreateSession(ctx, sessionName, probes)
 	if err != nil {
 		return fmt.Errorf("error creating session: %w", err)
 	}
 
-	// TODO: Prompt user for details like bean name and amount and probe mapping
-	// TODO: Create TWChart session and keep ID in-memory
 	// TODO: save session ID to text file (.current_session) so it can be resumed. defer file deletion
 	_ = sessionID
 
 	// Use bufio.Scanner for line-by-line input
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("> ")
-	for scanner.Scan() {
+	for {
+		if !scanner.Scan() {
+			if scanner.Err() == nil {
+				fmt.Println("\nReceived EOF (Ctrl-D). Exiting.")
+				return nil
+			}
+			return scanner.Err()
+		}
+
+		fmt.Print("> ")
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -150,10 +169,7 @@ func (c Controller) Run(ctx context.Context) error {
 		} else {
 			fmt.Println(resp)
 		}
-		fmt.Print("> ")
 	}
-
-	return scanner.Err()
 }
 
 // handleExternalCommands is responsible for commands that do not get sent to the firmware controller.

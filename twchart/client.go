@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/calvinmclean/babyapi"
@@ -20,11 +21,9 @@ type Client struct {
 	sessionID string
 }
 
-// the alias is used because the twchart.Session has UnmarshalText which invalidates UnmarshalJSON
-type sessionAlias twchart.Session
 type session struct {
 	babyapi.DefaultResource
-	Session sessionAlias
+	Session twchart.Session
 }
 
 func NewClient(addr string) Client {
@@ -34,11 +33,11 @@ func NewClient(addr string) Client {
 
 func (c *Client) CreateSession(ctx context.Context, beanName string, probes Probes) (string, error) {
 	resp, err := c.client.Post(ctx, &session{
-		Session: sessionAlias(twchart.Session{
+		Session: twchart.Session{
 			Name:   beanName,
 			Date:   time.Now(),
 			Probes: []twchart.Probe(probes),
-		}),
+		},
 	})
 	if err != nil {
 		return "", err
@@ -50,9 +49,9 @@ func (c *Client) CreateSession(ctx context.Context, beanName string, probes Prob
 }
 
 func (c Client) SetStartTime(ctx context.Context, startTime time.Time) error {
-	_, err := c.client.Patch(ctx, c.sessionID, &session{Session: sessionAlias(twchart.Session{
+	_, err := c.client.Patch(ctx, c.sessionID, &session{Session: twchart.Session{
 		StartTime: startTime,
-	})})
+	}})
 	return err
 }
 
@@ -96,13 +95,38 @@ func (c Client) makeRequest(ctx context.Context, url string, body any) error {
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}
+
+	req.Header.Add("Content-Type", "application/json")
+
 	resp, err := c.client.MakeGenericRequest(req, nil)
 	if err != nil {
 		return fmt.Errorf("error making request: %w", err)
 	}
-	if resp.Response.StatusCode != http.StatusOK {
+	if resp.Response.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("unexpected status code: %d, response: %v", resp.Response.StatusCode, resp.Body)
 	}
 
 	return nil
+}
+
+// ParseProbes parses a string in the format "1=Name,2=Name,..." into twchart.Probes.
+func ParseProbes(input string) (Probes, error) {
+	var probes Probes
+	entries := strings.SplitSeq(input, ",")
+	for entry := range entries {
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid probe entry: %q", entry)
+		}
+		posStr := strings.TrimSpace(parts[0])
+		name := strings.TrimSpace(parts[1])
+
+		var pos twchart.ProbePosition
+		_, err := fmt.Sscanf(posStr, "%d", &pos)
+		if err != nil || pos <= twchart.ProbePositionNone {
+			return nil, fmt.Errorf("invalid probe position: %q", posStr)
+		}
+		probes = append(probes, twchart.Probe{Name: name, Position: pos})
+	}
+	return probes, nil
 }

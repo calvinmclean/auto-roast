@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	github.com/calvinmclean/babyapi v0.32.0
-	github.com/calvinmclean/twchart v0.0.0-20251005010049-60882216a9e4
+	github.com/calvinmclean/twchart v0.1.0
 	go.bug.st/serial v1.6.4
 	tinygo.org/x/drivers v0.33.0
 )

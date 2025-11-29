@@ -1,4 +1,3 @@
-- [ ] Create CLI to do serial input/output and store to a log. Easier than opening up Arduino IDE. Bubbletea would be nice, but probably not worth the effort
 - [ ] Parse file with serial commands + sleep/delay and send to the device to automate roasting. This will have to be started after pre-heat or include a pause to load beans and resume
 - [ ] Automate conversion of roast logs into list of commands to re-produce
 - [ ] Commands for changing settings like stepper and servo calibration without re-compile?

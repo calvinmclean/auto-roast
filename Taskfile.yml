@@ -25,6 +25,7 @@ tasks:
   run:
     aliases: ["r"]
     env:
-      TWCHART_ADDR: http://server.local:8087
+      TWCHART_ADDR: http://localhost:8080
+      # TWCHART_ADDR: http://server.local:8087
     cmds:
-      - go run cmd/auto-roast/main.go
+      - go run cmd/auto-roast/main.go {{ .CLI_ARGS }}
