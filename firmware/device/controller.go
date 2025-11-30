@@ -110,29 +110,33 @@ func (d *Device) GoToMode(target autoroast.ControlMode) bool {
 	if d.verbose {
 		println(d.ts(), "GoToMode:", target)
 	}
-	if target == autoroast.ControlModeUnknown {
-		return false
-	}
 
-	if d.currentControlMode == target {
+	if target == autoroast.ControlModeUnknown {
 		return false
 	}
 
 	// If we have started running, then we need extra logic to see if we are in "select mode".
 	// This is required because the "select mode" automatically stops after ~3s, so we need to
 	// click an extra time to get back into "select mode"
+	var clicked bool
 	if !d.startTime.IsZero() {
 		if time.Since(d.lastClick) > 3*time.Second {
 			d.ClickButton()
+			clicked = true
 		}
+	}
+
+	if d.currentControlMode == target {
+		return clicked
 	}
 
 	for d.currentControlMode != target {
 		d.ClickButton()
 		d.currentControlMode = d.currentControlMode.Next()
+		clicked = true
 	}
 
-	return true
+	return clicked
 }
 
 // FixControlMode manually sets the ControlMode to account for errors
