@@ -313,3 +313,7 @@ func (d *Device) Settings() (uint, uint) {
 func (d *Device) ReadByte() (byte, error) {
 	return machine.Serial.ReadByte()
 }
+
+func (d *Device) WriteByte(b byte) error {
+	return machine.Serial.WriteByte(b)
+}

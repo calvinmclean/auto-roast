@@ -34,6 +34,7 @@ type Device interface {
 
 	// I/O
 	ReadByte() (byte, error)
+	WriteByte(byte) error
 }
 
 var (
@@ -344,6 +345,10 @@ func Run(d Device) {
 		}
 
 		err = cmd.Run(d, in)
+		if err != nil {
+			println("error:", err.Error())
+		}
+		err = d.WriteByte(autoroast.TerminationChar)
 		if err != nil {
 			println("error:", err.Error())
 		}

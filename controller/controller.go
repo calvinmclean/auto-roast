@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"autoroast"
 	"autoroast/twchart"
 	"bufio"
 	"context"
@@ -100,12 +101,12 @@ func (c Controller) passthroughCommand(in []byte) (string, error) {
 		return "", fmt.Errorf("unexpected error writing serial: %w", err)
 	}
 
-	buf := make([]byte, 128)
-	n, err := c.port.Read(buf)
+	reader := bufio.NewReader(c.port)
+	resp, err := reader.ReadString(autoroast.TerminationChar)
 	if err != nil {
 		return "", fmt.Errorf("unexpected error reading serial: %w", err)
 	}
-	return string(buf[:n]), nil
+	return strings.TrimSpace(resp), nil
 }
 
 func (c Controller) Run(ctx context.Context) error {
@@ -139,8 +140,9 @@ func (c Controller) Run(ctx context.Context) error {
 
 	// Use bufio.Scanner for line-by-line input
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Print("> ")
 	for {
+		fmt.Print("> ")
+
 		if !scanner.Scan() {
 			if scanner.Err() == nil {
 				fmt.Println("\nReceived EOF (Ctrl-D). Exiting.")
@@ -149,7 +151,6 @@ func (c Controller) Run(ctx context.Context) error {
 			return scanner.Err()
 		}
 
-		fmt.Print("> ")
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
 		if line == "" {

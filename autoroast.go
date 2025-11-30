@@ -1,5 +1,7 @@
 package autoroast
 
+const TerminationChar = 0x04 // ascii EOT (End of Transmission)
+
 // ControlMode is the mode that the FreshRoast's display is showing
 type ControlMode int
 
