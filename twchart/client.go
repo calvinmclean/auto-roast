@@ -26,9 +26,9 @@ type session struct {
 	Session twchart.Session
 }
 
-func NewClient(addr string) Client {
+func NewClient(addr string) *Client {
 	client := babyapi.NewClient[*session](addr, "/sessions")
-	return Client{client: client}
+	return &Client{client: client}
 }
 
 func (c *Client) CreateSession(ctx context.Context, beanName string, probes Probes) (string, error) {

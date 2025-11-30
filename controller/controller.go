@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"autoroast"
-	"autoroast/twchart"
 	"bufio"
 	"context"
 	"errors"
@@ -12,12 +10,15 @@ import (
 	"strings"
 	"time"
 
+	"autoroast"
+	"autoroast/twchart"
+
 	"go.bug.st/serial"
 	"go.bug.st/serial/enumerator"
 )
 
 type Controller struct {
-	twchartClient twchart.Client
+	twchartClient twchartClient
 	port          serial.Port
 }
 
@@ -83,7 +84,10 @@ func New(cfg Config) (Controller, error) {
 		return Controller{}, fmt.Errorf("unexpected error opening serial connection: %w", err)
 	}
 
-	client := twchart.NewClient(cfg.TWChartAddr)
+	var client twchartClient = noopTWChartClient{}
+	if cfg.TWChartAddr != "mock" {
+		client = twchart.NewClient(cfg.TWChartAddr)
+	}
 
 	return Controller{port: port, twchartClient: client}, nil
 }
@@ -96,6 +100,10 @@ func (c Controller) Close() error {
 }
 
 func (c Controller) passthroughCommand(in []byte) (string, error) {
+	if c.port == nil {
+		return "", errors.New("no serial port")
+	}
+
 	_, err := c.port.Write(in)
 	if err != nil {
 		return "", fmt.Errorf("unexpected error writing serial: %w", err)
