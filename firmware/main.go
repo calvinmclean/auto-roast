@@ -11,14 +11,14 @@ import (
 
 func main() {
 	stepperCfg := device.StepperConfig{
-		Pins:      [4]machine.Pin{machine.GP0, machine.GP1, machine.GP2, machine.GP3},
+		Pins:      [4]machine.Pin{machine.GP16, machine.GP17, machine.GP18, machine.GP19},
 		StepMode:  device.StepModeHalf,
 		StepDelay: 3000 * time.Microsecond,
 	}
 
 	servoCfg := device.ServoConfig{
-		PWM: machine.PWM2,
-		Pin: machine.GP4,
+		PWM: machine.PWM3,
+		Pin: machine.GP22,
 	}
 	stepsPerIncrement := nominalStepsPerIncrement(30, 9, 8, 4096)
 	calibrationCfg := device.CalibrationConfig{

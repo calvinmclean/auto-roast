@@ -25,9 +25,15 @@ tasks:
   run:
     aliases: ["r"]
     env:
-      IGNORE_SERIAL: true
-      TWCHART_ADDR: mock
-      # TWCHART_ADDR: http://localhost:8080
+      TWCHART_ADDR: http://localhost:8080
       # TWCHART_ADDR: http://server.local:8087
     cmds:
       - go run cmd/auto-roast/main.go {{ .CLI_ARGS }}
+
+  dev:
+    aliases: ["d"]
+    env:
+      IGNORE_SERIAL: true
+      TWCHART_ADDR: mock
+    cmds:
+      - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-session=dev" }}
