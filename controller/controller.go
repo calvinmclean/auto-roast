@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"autoroast"
-	"autoroast/twchart"
+	"github.com/calvinmclean/autoroast"
+	"github.com/calvinmclean/autoroast/twchart"
 
 	"go.bug.st/serial"
 	"go.bug.st/serial/enumerator"

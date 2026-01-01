@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"autoroast/controller"
+	"github.com/calvinmclean/autoroast/controller"
 )
 
 func main() {

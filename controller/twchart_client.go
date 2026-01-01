@@ -1,9 +1,10 @@
 package controller
 
 import (
-	"autoroast/twchart"
 	"context"
 	"time"
+
+	"github.com/calvinmclean/autoroast/twchart"
 )
 
 type twchartClient interface {

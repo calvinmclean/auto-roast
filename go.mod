@@ -1,4 +1,4 @@
-module autoroast
+module github.com/calvinmclean/autoroast
 
 go 1.25.1
 

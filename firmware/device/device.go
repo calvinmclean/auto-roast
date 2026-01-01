@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"autoroast"
+	"github.com/calvinmclean/autoroast"
 
 	"tinygo.org/x/drivers/servo"
 )

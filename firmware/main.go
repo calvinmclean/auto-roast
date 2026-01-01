@@ -5,8 +5,8 @@ import (
 	"math"
 	"time"
 
-	"autoroast/firmware/commands"
-	"autoroast/firmware/device"
+	"github.com/calvinmclean/autoroast/firmware/commands"
+	"github.com/calvinmclean/autoroast/firmware/device"
 )
 
 func main() {

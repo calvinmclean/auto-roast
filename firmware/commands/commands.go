@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"autoroast"
+	"github.com/calvinmclean/autoroast"
 )
 
 type Command struct {
