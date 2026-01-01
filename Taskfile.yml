@@ -37,3 +37,11 @@ tasks:
       TWCHART_ADDR: mock
     cmds:
       - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-session=dev" }}
+
+  devui:
+    env:
+      IGNORE_SERIAL: true
+      TWCHART_ADDR: mock
+      ENABLE_UI: true
+    cmds:
+      - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-session=dev" }}

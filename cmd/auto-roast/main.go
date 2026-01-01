@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"os"
 
 	"github.com/calvinmclean/autoroast/controller"
+	"github.com/calvinmclean/autoroast/ui"
 )
 
 func main() {
@@ -13,7 +15,15 @@ func main() {
 	}
 	defer c.Close()
 
-	err = c.Run(context.Background())
+	ctx := context.Background()
+
+	if os.Getenv("ENABLE_UI") == "true" {
+		roasterUI := ui.NewRoasterUI()
+		roasterUI.Run(ctx)
+		return
+	}
+
+	err = c.Run(ctx)
 	if err != nil {
 		panic(err)
 	}
