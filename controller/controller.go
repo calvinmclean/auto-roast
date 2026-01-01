@@ -200,6 +200,7 @@ func (c Controller) Run(ctx context.Context) error {
 func (c Controller) handleExternalCommands(ctx context.Context, line string) (bool, error) {
 	switch line {
 	case "PH", "PREHEAT":
+		// TODO: should start if not already started
 		return true, c.twchartClient.AddStage(ctx, "Preheat", time.Now())
 	case "ROAST", "ROASTING":
 		return true, c.twchartClient.AddStage(ctx, "Roasting", time.Now())

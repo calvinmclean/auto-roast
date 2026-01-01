@@ -22,8 +22,8 @@ func main() {
 	}
 	stepsPerIncrement := nominalStepsPerIncrement(30, 9, 8, 4096)
 	calibrationCfg := device.CalibrationConfig{
-		ServoBasePosition:     15,
-		ServoClickPosition:    55,
+		ServoBasePosition:     30,
+		ServoClickPosition:    70,
 		ServoPressDelay:       200 * time.Millisecond,
 		ServoResetDelay:       250 * time.Millisecond,
 		StepsPerIncrement:     stepsPerIncrement,
