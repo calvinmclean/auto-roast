@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"image/color"
+	"io"
 	"strconv"
 	"sync"
 	"time"
@@ -16,43 +17,58 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-type State int
+type state int
 
 const (
-	StateNone State = iota
-	StateStart
-	StatePreheat
-	StateRoasting
-	StateFirstCrack
-	StateCooling
-	StateDone
+	stateNone state = iota
+	statePreheat
+	stateRoasting
+	stateFirstCrack
+	stateCooling
+	stateDone
 )
 
-func (s State) String() string {
+func (s state) String() string {
 	switch s {
-	case StateStart:
-		return "Start"
-	case StatePreheat:
+	case statePreheat:
 		return "Preheat"
-	case StateRoasting:
+	case stateRoasting:
 		return "Roasting"
-	case StateFirstCrack:
+	case stateFirstCrack:
 		return "First Crack"
-	case StateCooling:
+	case stateCooling:
 		return "Cooling"
-	case StateDone:
+	case stateDone:
 		return "Done"
 	default:
 		return "Unknown"
 	}
 }
 
-func (s State) Next() State {
-	if s == StateDone {
+func (s state) next() state {
+	if s == stateDone {
 		// Done has no next State
-		return StateDone
+		return stateDone
 	}
 	return s + 1
+}
+
+func (s state) command() string {
+	switch s {
+	case statePreheat:
+		// Start and Preaheat
+		return "S\nPREHEAT"
+	case stateRoasting:
+		return "ROASTING"
+	case stateFirstCrack:
+		return "FC"
+	case stateCooling:
+		return "COOL"
+	case stateDone:
+		return "DONE"
+	default:
+		return ""
+	}
 }
 
 func createSlider(labelText string, onSet func(float64), onFix func(int)) *fyne.Container {
@@ -158,38 +174,35 @@ func (t *timer) Go(waitForStart chan struct{}) {
 	}()
 }
 
-func createLogAccordion() *widget.Accordion {
-	logContent := widget.NewLabel("")
-	logScroll := container.NewVScroll(logContent)
-	logScroll.SetMinSize(fyne.NewSize(300, 100))
+func createLogAccordion() (*widget.Accordion, *widget.Entry) {
+	logScroll := widget.NewMultiLineEntry()
+	logScroll.Wrapping = fyne.TextWrapWord
+	logScroll.SetMinRowsVisible(10)
 
-	go func() {
-		for range time.Tick(time.Second) {
-			fyne.Do(func() {
-				logLine := fmt.Sprintf("Mock Log Entry")
-				logContent.SetText(logContent.Text + "\n" + logLine)
-			})
-		}
-	}()
+	// disable editing by undoing changes. this allows it to not have changed colors from Disable
+	logScroll.OnChanged = func(_ string) {
+		logScroll.Undo()
+	}
 
 	return widget.NewAccordion(
 		widget.NewAccordionItem("Logs", logScroll),
-	)
+	), logScroll
 }
 
 type RoasterUI struct {
+	logEntry *widget.Entry
 }
 
 func NewRoasterUI() *RoasterUI {
 	return &RoasterUI{}
 }
 
-func (ui *RoasterUI) Run(ctx context.Context) {
+func (ui *RoasterUI) Run(ctx context.Context, w io.Writer) {
 	application := app.New()
 
-	window := application.NewWindow("Roasting App")
+	window := application.NewWindow("Auto Roast")
 
-	currentState := StateNone
+	currentState := stateNone
 
 	overallTimer := newTimer(false)
 	lastEventTimer := newTimer(true)
@@ -203,29 +216,31 @@ func (ui *RoasterUI) Run(ctx context.Context) {
 	fcTimer.Go(waitForFC)
 
 	var stateButton *widget.Button
-	stateButton = widget.NewButton(currentState.Next().String(), func() {
+	stateButton = widget.NewButton(currentState.next().String(), func() {
 		currentState++
 
 		lastEventTimer.Set(time.Now())
+		stateButton.SetText(currentState.next().String())
 
-		if currentState == StateFirstCrack {
+		switch currentState {
+		case stateFirstCrack:
 			fcTimer.text.Color = color.RGBA{R: 139, G: 0, B: 0, A: 255}
 			fcTimer.Set(time.Now())
 			close(waitForFC)
-		}
-
-		if currentState == StateFirstCrack+1 {
+		case stateFirstCrack + 1:
 			fcTimer.Stop()
-		}
-
-		if currentState == StateStart {
+		case 1:
 			overallTimer.Set(time.Now())
 			close(waitForStart)
+		case stateDone:
+			stateButton.Disable()
+			overallTimer.Stop()
+			lastEventTimer.Stop()
 		}
 
-		stateButton.SetText(currentState.Next().String())
-		if currentState == StateDone {
-			stateButton.Disable()
+		stateCommand := currentState.command()
+		if stateCommand != "" {
+			w.Write(fmt.Appendf([]byte{}, "%s\n", stateCommand))
 		}
 	})
 
@@ -233,9 +248,12 @@ func (ui *RoasterUI) Run(ctx context.Context) {
 		"Fan",
 		func(f float64) {
 			fmt.Printf("Set Fan: %.0f\n", f)
+			w.Write(fmt.Appendf([]byte{}, "F%.0f\n", f))
+			lastEventTimer.Set(time.Now())
 		},
 		func(value int) {
 			fmt.Printf("Fixing fan: %d\n", value)
+			w.Write(fmt.Appendf([]byte{}, "f%d\n", value))
 		},
 	)
 
@@ -243,13 +261,17 @@ func (ui *RoasterUI) Run(ctx context.Context) {
 		"Power",
 		func(f float64) {
 			fmt.Printf("Set Power: %.0f\n", f)
+			w.Write(fmt.Appendf([]byte{}, "P%.0f\n", f))
+			lastEventTimer.Set(time.Now())
 		},
 		func(value int) {
 			fmt.Printf("Fixing power: %d\n", value)
+			w.Write(fmt.Appendf([]byte{}, "p%d\n", value))
 		},
 	)
 
-	logAccordion := createLogAccordion()
+	logAccordion, logEntry := createLogAccordion()
+	ui.logEntry = logEntry
 
 	contentContainer := container.NewVBox(
 		container.NewHBox(
@@ -274,4 +296,20 @@ func (ui *RoasterUI) Run(ctx context.Context) {
 	window.SetContent(contentContainer)
 	window.Resize(fyne.NewSize(300, 200))
 	window.ShowAndRun()
+}
+
+// Write implements io.Writer to enable writing logs to the log entry
+func (ui *RoasterUI) Write(p []byte) (n int, err error) {
+	if ui.logEntry == nil {
+		return len(p), nil
+	}
+
+	text := string(p)
+
+	fyne.Do(func() {
+		ui.logEntry.Append(text)
+		ui.logEntry.CursorRow = len(ui.logEntry.Text) // auto-scroll
+	})
+
+	return len(p), nil
 }

@@ -42,6 +42,7 @@ tasks:
     env:
       IGNORE_SERIAL: true
       TWCHART_ADDR: mock
+      # TWCHART_ADDR: http://localhost:8080
       ENABLE_UI: true
     cmds:
       - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-session=dev" }}

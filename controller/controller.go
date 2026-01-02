@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -117,7 +118,7 @@ func (c Controller) passthroughCommand(in []byte) (string, error) {
 	return strings.TrimSpace(resp), nil
 }
 
-func (c Controller) Run(ctx context.Context) error {
+func (c Controller) Run(ctx context.Context, reader io.Reader, writer io.Writer) error {
 	var sessionName, probesInput string
 	flag.StringVar(&sessionName, "session", "", "Session name for TWChart")
 	flag.StringVar(&probesInput, "probes", "", "Set probe mapping in format \"1=Name,2=Name,...\". Default is 1=Ambient,2=Beans")
@@ -147,7 +148,7 @@ func (c Controller) Run(ctx context.Context) error {
 	_ = sessionID
 
 	// Use bufio.Scanner for line-by-line input
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := bufio.NewScanner(reader)
 	for {
 		fmt.Print("> ")
 
@@ -167,7 +168,7 @@ func (c Controller) Run(ctx context.Context) error {
 
 		matched, err := c.handleExternalCommands(ctx, line)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(writer, "Error: %v\n", err)
 			continue
 		}
 		if matched {
@@ -181,16 +182,16 @@ func (c Controller) Run(ctx context.Context) error {
 			err = c.twchartClient.SetStartTime(ctx, time.Now())
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(writer, "Error: %v\n", err)
 			continue
 		}
 
 		resp, err := c.passthroughCommand([]byte(line))
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(writer, "Error: %v\n", err)
 		} else {
-			fmt.Println(resp)
+			fmt.Fprintln(writer, resp)
 		}
 	}
 }
