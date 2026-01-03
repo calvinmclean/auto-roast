@@ -15,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/calvinmclean/autoroast"
 )
 
 type state int
@@ -247,12 +248,10 @@ func (ui *RoasterUI) Run(ctx context.Context, w io.Writer) {
 	fanContainer := createSlider(
 		"Fan",
 		func(f float64) {
-			fmt.Printf("Set Fan: %.0f\n", f)
 			w.Write(fmt.Appendf([]byte{}, "F%.0f\n", f))
 			lastEventTimer.Set(time.Now())
 		},
 		func(value int) {
-			fmt.Printf("Fixing fan: %d\n", value)
 			w.Write(fmt.Appendf([]byte{}, "f%d\n", value))
 		},
 	)
@@ -260,12 +259,10 @@ func (ui *RoasterUI) Run(ctx context.Context, w io.Writer) {
 	powerContainer := createSlider(
 		"Power",
 		func(f float64) {
-			fmt.Printf("Set Power: %.0f\n", f)
 			w.Write(fmt.Appendf([]byte{}, "P%.0f\n", f))
 			lastEventTimer.Set(time.Now())
 		},
 		func(value int) {
-			fmt.Printf("Fixing power: %d\n", value)
 			w.Write(fmt.Appendf([]byte{}, "p%d\n", value))
 		},
 	)
@@ -304,7 +301,16 @@ func (ui *RoasterUI) Write(p []byte) (n int, err error) {
 		return len(p), nil
 	}
 
-	text := string(p)
+	// clean up extra newlines and termination character
+	clean := p[:0]
+	for _, v := range p {
+		if v != '\n' && v != autoroast.TerminationChar {
+			clean = append(clean, v)
+		}
+	}
+	clean = append(clean, '\n')
+
+	text := string(clean)
 
 	fyne.Do(func() {
 		ui.logEntry.Append(text)
