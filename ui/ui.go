@@ -90,6 +90,18 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	logAccordion, logEntry := createLogAccordion()
 	ui.logEntry = logEntry
 
+	cButton := widget.NewButton("Click", func() {
+		cw.Click()
+	})
+	dButton := widget.NewButton("Debug", func() {
+		cw.Debug()
+	})
+
+	buttonContainer := container.NewGridWithColumns(2,
+		cButton,
+		dButton,
+	)
+
 	contentContainer := container.NewVBox(
 		container.NewHBox(
 			container.NewPadded(overallTimer.text),
@@ -100,6 +112,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		stateButton,
 		fanContainer,
 		powerContainer,
+		buttonContainer,
 		logAccordion,
 	)
 

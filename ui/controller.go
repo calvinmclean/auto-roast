@@ -11,6 +11,14 @@ type controllerWrapper struct {
 	lastEventTimer *timer
 }
 
+func (c *controllerWrapper) Click() {
+	fmt.Fprint(c.writer, "C\n")
+}
+
+func (c *controllerWrapper) Debug() {
+	fmt.Fprint(c.writer, "D\n")
+}
+
 func (c *controllerWrapper) SetFan(value float64) {
 	c.lastEventTimer.Set(time.Now())
 	fmt.Fprintf(c.writer, "F%.0f\n", value)
