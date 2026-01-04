@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"fmt"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -41,12 +42,21 @@ func (cw *ConfigWindow) saveConfigToPreferences(cfg *controller.Config) {
 }
 
 func (cw *ConfigWindow) Show(cfg *controller.Config) {
+	window := cw.app.NewWindow("Auto Roast - Configuration")
+	window.Resize(fyne.NewSize(400, 250))
+	window.SetCloseIntercept(func() {
+		// Treat window close as cancel
+		window.Close()
+		cw.app.Quit()
+	})
+	window.Show()
+
 	// Load config from preferences
 	cw.loadConfigFromPreferences(cfg)
 
 	serialPorts, err := controller.GetSerialPorts()
 	if err != nil && !errors.Is(err, controller.ErrNoUSBSerial) {
-		showErrorAndQuit(cw.app, "Error getting serial ports: "+err.Error())
+		showError(cw.app, window, fmt.Errorf("error getting serial ports: %w", err))
 		return
 	}
 
@@ -70,7 +80,6 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	twchartAddrEntry := widget.NewEntry()
 	twchartAddrEntry.Bind(binding.BindString(&cfg.TWChartAddr))
 
-	window := cw.app.NewWindow("Auto Roast - Configuration")
 	submitButton := widget.NewButton("Submit", func() {
 		cw.saveConfigToPreferences(cfg)
 		cw.OnSubmit()
@@ -133,19 +142,12 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	)
 
 	window.SetContent(form)
-	window.Resize(fyne.NewSize(400, 250))
-	window.SetCloseIntercept(func() {
-		// Treat window close as cancel
-		window.Close()
-		cw.app.Quit()
-	})
-	window.Show()
 }
 
-func showErrorAndQuit(app fyne.App, message string) {
-	err := errors.New(message)
-	dialog.ShowError(err, nil)
-	go func() {
+func showError(app fyne.App, window fyne.Window, err error) {
+	d := dialog.NewError(err, window)
+	d.SetOnClosed(func() {
 		app.Quit()
-	}()
+	})
+	d.Show()
 }

@@ -131,7 +131,8 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	configWindow.OnSubmit = func() {
 		c, err := controller.New(cfg)
 		if err != nil {
-			panic("error creating controller")
+			showError(application, window, fmt.Errorf("error creating controller: %w", err))
+			return
 		}
 
 		r, w := io.Pipe()
@@ -152,7 +153,8 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		go func() {
 			err := c.Run(controllerCtx, r, controllerWriter)
 			if err != nil {
-				panic(err)
+				showError(application, window, fmt.Errorf("error running controller: %w", err))
+				return
 			}
 		}()
 
