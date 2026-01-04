@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"io"
 	"os"
 
@@ -10,6 +11,11 @@ import (
 )
 
 func main() {
+	var sessionName, probesInput string
+	flag.StringVar(&sessionName, "session", "", "Session name for TWChart")
+	flag.StringVar(&probesInput, "probes", "", "Set probe mapping in format \"1=Name,2=Name,...\". Default is 1=Ambient,2=Beans")
+	flag.Parse()
+
 	if os.Getenv("ENABLE_UI") == "true" {
 		runUI()
 		return

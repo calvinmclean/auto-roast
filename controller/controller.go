@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -21,6 +20,7 @@ import (
 type Controller struct {
 	twchartClient twchartClient
 	port          serial.Port
+	config        Config
 }
 
 type Config struct {
@@ -28,31 +28,47 @@ type Config struct {
 	BaudRate    int
 	TWChartAddr string
 
-	ignoreSerial bool
+	SessionName string
+	ProbesInput string
+
+	IgnoreSerial bool
 }
 
-func NewFromEnv() (Controller, error) {
+func GetSerialPorts() ([]string, error) {
+	ports, err := enumerator.GetDetailedPortsList()
+	if err != nil {
+		return nil, fmt.Errorf("error getting serial ports: %w", err)
+	}
+
+	var usbPorts []string
+	for _, p := range ports {
+		if p.IsUSB {
+			usbPorts = append(usbPorts, p.Name)
+		}
+	}
+
+	if len(usbPorts) == 0 {
+		return nil, errors.New("no USB serial ports found")
+	}
+
+	return usbPorts, nil
+}
+
+func NewConfigFromEnv() (Config, error) {
 	serialPort := os.Getenv("SERIAL_PORT")
 	baudRateStr := os.Getenv("BAUD_RATE")
 	twchartAddr := os.Getenv("TWCHART_ADDR")
-	// ignoreSerial allows ignoring missing serial port for debugging the program without a serial connection
+	sessionName := os.Getenv("SESSION_NAME")
+	probesInput := os.Getenv("PROBES_INPUT")
 	ignoreSerial := os.Getenv("IGNORE_SERIAL") == "true"
 
 	// Find default serial port if not set
 	if serialPort == "" {
-		ports, err := enumerator.GetDetailedPortsList()
+		ports, err := GetSerialPorts()
 		if err != nil {
-			return Controller{}, fmt.Errorf("error getting serial ports: %w", err)
+			return Config{}, fmt.Errorf("error getting serial ports: %w", err)
 		}
-
-		for _, p := range ports {
-			if p.IsUSB {
-				serialPort = p.Name
-			}
-		}
-	}
-	if serialPort == "" && !ignoreSerial {
-		return Controller{}, errors.New("no serial port found")
+		serialPort = ports[0]
 	}
 
 	// Parse baud rate, default to 115200
@@ -61,16 +77,36 @@ func NewFromEnv() (Controller, error) {
 		fmt.Sscanf(baudRateStr, "%d", &baudRate)
 	}
 
-	// Error if missing TWCHART_URL
-	if twchartAddr == "" {
-		return Controller{}, fmt.Errorf("missing required TWCHART_ADDR environment variable")
+	if sessionName == "" {
+		sessionName = "default-session"
 	}
 
-	cfg := Config{
+	if probesInput == "" {
+		probesInput = "1=Ambient,2=Beans"
+	}
+
+	if serialPort == "" && !ignoreSerial {
+		return Config{}, errors.New("no serial port found")
+	}
+
+	if twchartAddr == "" {
+		return Config{}, fmt.Errorf("missing required TWCHART_ADDR environment variable")
+	}
+
+	return Config{
 		SerialPort:   serialPort,
 		BaudRate:     baudRate,
 		TWChartAddr:  twchartAddr,
-		ignoreSerial: ignoreSerial,
+		SessionName:  sessionName,
+		ProbesInput:  probesInput,
+		IgnoreSerial: ignoreSerial,
+	}, nil
+}
+
+func NewFromEnv() (Controller, error) {
+	cfg, err := NewConfigFromEnv()
+	if err != nil {
+		return Controller{}, err
 	}
 	return New(cfg)
 }
@@ -81,7 +117,7 @@ func New(cfg Config) (Controller, error) {
 	}
 
 	port, err := serial.Open(cfg.SerialPort, mode)
-	if err != nil && !cfg.ignoreSerial {
+	if err != nil && !cfg.IgnoreSerial {
 		return Controller{}, fmt.Errorf("unexpected error opening serial connection: %w", err)
 	}
 
@@ -90,7 +126,7 @@ func New(cfg Config) (Controller, error) {
 		client = twchart.NewClient(cfg.TWChartAddr)
 	}
 
-	return Controller{port: port, twchartClient: client}, nil
+	return Controller{port: port, twchartClient: client, config: cfg}, nil
 }
 
 func (c Controller) Close() error {
@@ -119,11 +155,7 @@ func (c Controller) passthroughCommand(in []byte) (string, error) {
 }
 
 func (c Controller) Run(ctx context.Context, reader io.Reader, writer io.Writer) error {
-	var sessionName, probesInput string
-	flag.StringVar(&sessionName, "session", "", "Session name for TWChart")
-	flag.StringVar(&probesInput, "probes", "", "Set probe mapping in format \"1=Name,2=Name,...\". Default is 1=Ambient,2=Beans")
-	flag.Parse()
-	if sessionName == "" {
+	if c.config.SessionName == "" {
 		return errors.New("missing -session")
 	}
 
@@ -131,15 +163,15 @@ func (c Controller) Run(ctx context.Context, reader io.Reader, writer io.Writer)
 		{Name: "Ambient", Position: 1},
 		{Name: "Beans", Position: 2},
 	}
-	if probesInput != "" {
+	if c.config.ProbesInput != "" {
 		var err error
-		probes, err = twchart.ParseProbes(probesInput)
+		probes, err = twchart.ParseProbes(c.config.ProbesInput)
 		if err != nil {
 			return fmt.Errorf("invalid input for probes: %w", err)
 		}
 	}
 
-	sessionID, err := c.twchartClient.CreateSession(ctx, sessionName, probes)
+	sessionID, err := c.twchartClient.CreateSession(ctx, c.config.SessionName, probes)
 	if err != nil {
 		return fmt.Errorf("error creating session: %w", err)
 	}
