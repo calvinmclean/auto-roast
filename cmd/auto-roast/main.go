@@ -35,13 +35,9 @@ func main() {
 }
 
 func runUI(cfg controller.Config, debug bool) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	roasterUI := ui.NewRoasterUI()
 
-	roasterUI.Run(ctx, cfg, debug)
-	cancel()
+	roasterUI.Run(context.Background(), cfg, debug)
 }
 
 func runCLI(cfg controller.Config) {

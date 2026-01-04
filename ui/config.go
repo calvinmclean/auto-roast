@@ -22,7 +22,28 @@ func NewConfigWindow(app fyne.App) *ConfigWindow {
 	}
 }
 
+func (cw *ConfigWindow) loadConfigFromPreferences(cfg *controller.Config) {
+	prefs := cw.app.Preferences()
+	cfg.SerialPort = prefs.StringWithFallback("serialPort", "")
+	cfg.BaudRate = prefs.StringWithFallback("baudRate", "115200")
+	cfg.TWChartAddr = prefs.StringWithFallback("twchartAddr", "")
+	cfg.SessionName = prefs.StringWithFallback("sessionName", "")
+	cfg.ProbesInput = prefs.StringWithFallback("probesInput", "1=Ambient,2=Beans")
+}
+
+func (cw *ConfigWindow) saveConfigToPreferences(cfg *controller.Config) {
+	prefs := cw.app.Preferences()
+	prefs.SetString("serialPort", cfg.SerialPort)
+	prefs.SetString("baudRate", cfg.BaudRate)
+	prefs.SetString("twchartAddr", cfg.TWChartAddr)
+	prefs.SetString("sessionName", cfg.SessionName)
+	prefs.SetString("probesInput", cfg.ProbesInput)
+}
+
 func (cw *ConfigWindow) Show(cfg *controller.Config) {
+	// Load config from preferences
+	cw.loadConfigFromPreferences(cfg)
+
 	serialPorts, err := controller.GetSerialPorts()
 	if err != nil && !errors.Is(err, controller.ErrNoUSBSerial) {
 		showErrorAndQuit(cw.app, "Error getting serial ports: "+err.Error())
@@ -51,6 +72,7 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 
 	window := cw.app.NewWindow("Auto Roast - Configuration")
 	submitButton := widget.NewButton("Submit", func() {
+		cw.saveConfigToPreferences(cfg)
 		cw.OnSubmit()
 		window.Close()
 	})

@@ -28,7 +28,7 @@ func NewRoasterUI() *RoasterUI {
 }
 
 func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool) {
-	application := app.New()
+	application := app.NewWithID("auto.roast.calvinmclean.github.io")
 
 	window := application.NewWindow("Auto Roast")
 
@@ -135,14 +135,16 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			controllerWriter = io.MultiWriter(os.Stdout, controllerWriter)
 		}
 
+		controllerCtx, cancel := context.WithCancel(ctx)
 		go func() {
-			err := c.Run(ctx, r, controllerWriter)
+			err := c.Run(controllerCtx, r, controllerWriter)
 			if err != nil {
 				panic(err)
 			}
 		}()
 
 		window.SetOnClosed(func() {
+			cancel()
 			_ = c.Close()
 		})
 
