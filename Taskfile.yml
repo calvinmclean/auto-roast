@@ -41,3 +41,8 @@ tasks:
   devui:
     cmds:
       - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-debug" }}
+
+  package:
+    cmds:
+      - go build -o ./.build/auto-roast ./cmd/auto-roast
+      - fyne package -os darwin -icon icon.png -exe .build/auto-roast -name .build/AutoRoast
