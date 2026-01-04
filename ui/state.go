@@ -39,8 +39,8 @@ func (s state) next() state {
 func (s state) command() string {
 	switch s {
 	case statePreheat:
-		// Start and Preaheat
-		return "S\nPREHEAT"
+		// Set initial values to F1P1, then Start and Preaheat
+		return "I11\nS\nPREHEAT"
 	case stateRoasting:
 		return "ROASTING"
 	case stateFirstCrack:
