@@ -28,21 +28,16 @@ tasks:
       TWCHART_ADDR: http://localhost:8080
       # TWCHART_ADDR: http://server.local:8087
     cmds:
-      - go run cmd/auto-roast/main.go {{ .CLI_ARGS }}
+      - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-ui=false" }}
 
   dev:
     aliases: ["d"]
     env:
-      IGNORE_SERIAL: true
+      SERIAL_PORT: none
       TWCHART_ADDR: mock
     cmds:
-      - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-session=dev" }}
+      - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-session=dev -ui=false" }}
 
   devui:
-    env:
-      IGNORE_SERIAL: true
-      TWCHART_ADDR: mock
-      # TWCHART_ADDR: http://localhost:8080
-      ENABLE_UI: true
     cmds:
-      - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-session=dev" }}
+      - go run cmd/auto-roast/main.go {{ .CLI_ARGS | default "-debug" }}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/color"
 	"io"
+	"os"
 	"strconv"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"github.com/calvinmclean/autoroast"
+	"github.com/calvinmclean/autoroast/controller"
 )
 
 type RoasterUI struct {
@@ -25,7 +27,7 @@ func NewRoasterUI() *RoasterUI {
 	return &RoasterUI{}
 }
 
-func (ui *RoasterUI) Run(ctx context.Context, w io.Writer) {
+func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool) {
 	application := app.New()
 
 	window := application.NewWindow("Auto Roast")
@@ -43,7 +45,7 @@ func (ui *RoasterUI) Run(ctx context.Context, w io.Writer) {
 	waitForFC := make(chan struct{})
 	fcTimer.Go(waitForFC)
 
-	c := &controller{writer: w, lastEventTimer: lastEventTimer}
+	cw := &controllerWrapper{lastEventTimer: lastEventTimer}
 
 	var stateButton *widget.Button
 	stateButton = widget.NewButton(currentState.next().String(), func() {
@@ -68,20 +70,20 @@ func (ui *RoasterUI) Run(ctx context.Context, w io.Writer) {
 			lastEventTimer.Stop()
 		}
 
-		c.RunStateCommand(currentState)
+		cw.RunStateCommand(currentState)
 	})
 
 	fanContainer := createSlider(
 		"Fan",
-		c.SetFan,
-		c.FixFan,
+		cw.SetFan,
+		cw.FixFan,
 		window.Canvas().Focus,
 	)
 
 	powerContainer := createSlider(
 		"Power",
-		c.SetPower,
-		c.FixPower,
+		cw.SetPower,
+		cw.FixPower,
 		window.Canvas().Focus,
 	)
 
@@ -110,7 +112,45 @@ func (ui *RoasterUI) Run(ctx context.Context, w io.Writer) {
 
 	window.SetContent(contentContainer)
 	window.Resize(fyne.NewSize(300, 200))
-	window.ShowAndRun()
+
+	// Show config window on startup
+	configWindow := NewConfigWindow(application)
+	configWindow.OnSubmit = func() {
+		c, err := controller.New(cfg)
+		if err != nil {
+			panic("error creating controller")
+		}
+
+		r, w := io.Pipe()
+		cw.writer = w
+
+		var controllerWriter io.Writer = ui
+		if debug {
+			// read/write Stdin/Stdout also
+			go func() {
+				defer w.Close()
+				io.Copy(w, os.Stdin)
+			}()
+
+			controllerWriter = io.MultiWriter(os.Stdout, controllerWriter)
+		}
+
+		go func() {
+			err := c.Run(ctx, r, controllerWriter)
+			if err != nil {
+				panic(err)
+			}
+		}()
+
+		window.SetOnClosed(func() {
+			_ = c.Close()
+		})
+
+		window.Show()
+	}
+	configWindow.Show(&cfg)
+
+	application.Run()
 }
 
 // Write implements io.Writer to enable writing logs to the log entry

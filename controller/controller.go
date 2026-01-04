@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,10 @@ import (
 	"go.bug.st/serial/enumerator"
 )
 
+const SerialPortNone = "none"
+
+var ErrNoUSBSerial = errors.New("no USB serial ports found")
+
 type Controller struct {
 	twchartClient twchartClient
 	port          serial.Port
@@ -25,13 +30,10 @@ type Controller struct {
 
 type Config struct {
 	SerialPort  string
-	BaudRate    int
+	BaudRate    string
 	TWChartAddr string
-
 	SessionName string
 	ProbesInput string
-
-	IgnoreSerial bool
 }
 
 func GetSerialPorts() ([]string, error) {
@@ -48,81 +50,69 @@ func GetSerialPorts() ([]string, error) {
 	}
 
 	if len(usbPorts) == 0 {
-		return nil, errors.New("no USB serial ports found")
+		return nil, ErrNoUSBSerial
 	}
 
 	return usbPorts, nil
 }
 
-func NewConfigFromEnv() (Config, error) {
+func NewConfigFromEnv() Config {
 	serialPort := os.Getenv("SERIAL_PORT")
-	baudRateStr := os.Getenv("BAUD_RATE")
+	baudRate := os.Getenv("BAUD_RATE")
 	twchartAddr := os.Getenv("TWCHART_ADDR")
 	sessionName := os.Getenv("SESSION_NAME")
 	probesInput := os.Getenv("PROBES_INPUT")
-	ignoreSerial := os.Getenv("IGNORE_SERIAL") == "true"
 
-	// Find default serial port if not set
-	if serialPort == "" {
-		ports, err := GetSerialPorts()
-		if err != nil {
-			return Config{}, fmt.Errorf("error getting serial ports: %w", err)
-		}
-		serialPort = ports[0]
-	}
-
-	// Parse baud rate, default to 115200
-	baudRate := 115200
-	if baudRateStr != "" {
-		fmt.Sscanf(baudRateStr, "%d", &baudRate)
-	}
-
-	if sessionName == "" {
-		sessionName = "default-session"
+	if baudRate == "" {
+		baudRate = "115200"
 	}
 
 	if probesInput == "" {
 		probesInput = "1=Ambient,2=Beans"
 	}
 
-	if serialPort == "" && !ignoreSerial {
-		return Config{}, errors.New("no serial port found")
-	}
-
-	if twchartAddr == "" {
-		return Config{}, fmt.Errorf("missing required TWCHART_ADDR environment variable")
-	}
-
 	return Config{
-		SerialPort:   serialPort,
-		BaudRate:     baudRate,
-		TWChartAddr:  twchartAddr,
-		SessionName:  sessionName,
-		ProbesInput:  probesInput,
-		IgnoreSerial: ignoreSerial,
-	}, nil
+		SerialPort:  serialPort,
+		BaudRate:    baudRate,
+		TWChartAddr: twchartAddr,
+		SessionName: sessionName,
+		ProbesInput: probesInput,
+	}
 }
 
 func NewFromEnv() (Controller, error) {
-	cfg, err := NewConfigFromEnv()
-	if err != nil {
-		return Controller{}, err
-	}
-	return New(cfg)
+	return New(NewConfigFromEnv())
 }
 
 func New(cfg Config) (Controller, error) {
-	mode := &serial.Mode{
-		BaudRate: cfg.BaudRate,
+	// Find default serial port if not set
+	if cfg.SerialPort == "" {
+		ports, err := GetSerialPorts()
+		if err != nil {
+			return Controller{}, fmt.Errorf("error getting serial ports: %w", err)
+		}
+		cfg.SerialPort = ports[0]
 	}
 
-	port, err := serial.Open(cfg.SerialPort, mode)
-	if err != nil && !cfg.IgnoreSerial {
-		return Controller{}, fmt.Errorf("unexpected error opening serial connection: %w", err)
+	baudRate, err := strconv.Atoi(cfg.BaudRate)
+	if err != nil {
+		return Controller{}, fmt.Errorf("invalid BaudRate: %w", err)
+	}
+	mode := &serial.Mode{
+		BaudRate: baudRate,
+	}
+
+	var port serial.Port
+	if cfg.SerialPort != SerialPortNone {
+		var err error
+		port, err = serial.Open(cfg.SerialPort, mode)
+		if err != nil {
+			return Controller{}, fmt.Errorf("unexpected error opening serial connection: %w", err)
+		}
 	}
 
 	var client twchartClient = noopTWChartClient{}
-	if cfg.TWChartAddr != "mock" {
+	if cfg.TWChartAddr != "mock" && cfg.TWChartAddr != "" {
 		client = twchart.NewClient(cfg.TWChartAddr)
 	}
 
@@ -156,7 +146,7 @@ func (c Controller) passthroughCommand(in []byte) (string, error) {
 
 func (c Controller) Run(ctx context.Context, reader io.Reader, writer io.Writer) error {
 	if c.config.SessionName == "" {
-		return errors.New("missing -session")
+		return errors.New("missing SessionName")
 	}
 
 	probes := twchart.Probes{
