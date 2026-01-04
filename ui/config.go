@@ -54,32 +54,6 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	// Load config from preferences
 	cw.loadConfigFromPreferences(cfg)
 
-	serialPorts, err := controller.GetSerialPorts()
-	if err != nil && !errors.Is(err, controller.ErrNoUSBSerial) {
-		showError(cw.app, window, fmt.Errorf("error getting serial ports: %w", err))
-		return
-	}
-
-	serialPorts = append(serialPorts, controller.SerialPortNone)
-
-	serialEntry := widget.NewSelect(serialPorts, nil)
-	if cfg.SerialPort == "" {
-		cfg.SerialPort = serialPorts[0]
-	}
-	serialEntry.Bind(binding.BindString(&cfg.SerialPort))
-
-	sessionEntry := widget.NewEntry()
-	sessionEntry.Bind(binding.BindString(&cfg.SessionName))
-
-	probesEntry := widget.NewEntry()
-	probesEntry.Bind(binding.BindString(&cfg.ProbesInput))
-
-	baudRateEntry := widget.NewEntry()
-	baudRateEntry.Bind(binding.BindString(&cfg.BaudRate))
-
-	twchartAddrEntry := widget.NewEntry()
-	twchartAddrEntry.Bind(binding.BindString(&cfg.TWChartAddr))
-
 	submitButton := widget.NewButton("Submit", func() {
 		cw.saveConfigToPreferences(cfg)
 		cw.OnSubmit()
@@ -99,8 +73,36 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 		}
 	}
 
+	serialPorts, err := controller.GetSerialPorts()
+	if err != nil && !errors.Is(err, controller.ErrNoUSBSerial) {
+		showError(cw.app, window, fmt.Errorf("error getting serial ports: %w", err))
+		return
+	}
+
+	serialPorts = append(serialPorts, controller.SerialPortNone)
+
+	serialEntry := widget.NewSelect(serialPorts, func(s string) {
+		validateForm()
+		cfg.SerialPort = s
+	})
+	if cfg.SerialPort == "" {
+		cfg.SerialPort = serialPorts[0]
+	}
+	serialEntry.SetSelected(serialPorts[0])
+
+	sessionEntry := widget.NewEntry()
+	sessionEntry.Bind(binding.BindString(&cfg.SessionName))
+
+	probesEntry := widget.NewEntry()
+	probesEntry.Bind(binding.BindString(&cfg.ProbesInput))
+
+	baudRateEntry := widget.NewEntry()
+	baudRateEntry.Bind(binding.BindString(&cfg.BaudRate))
+
+	twchartAddrEntry := widget.NewEntry()
+	twchartAddrEntry.Bind(binding.BindString(&cfg.TWChartAddr))
+
 	// Add listeners to field changes
-	serialEntry.OnChanged = func(_ string) { validateForm() }
 	sessionEntry.OnChanged = func(_ string) { validateForm() }
 	probesEntry.OnChanged = func(_ string) { validateForm() }
 	baudRateEntry.OnChanged = func(_ string) { validateForm() }
