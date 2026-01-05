@@ -11,6 +11,10 @@ type controllerWrapper struct {
 	lastEventTimer *timer
 }
 
+func (c *controllerWrapper) Note(note string) {
+	fmt.Fprintf(c.writer, "NOTE %s\n", note)
+}
+
 func (c *controllerWrapper) Click() {
 	fmt.Fprint(c.writer, "C\n")
 }

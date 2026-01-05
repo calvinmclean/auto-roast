@@ -13,10 +13,13 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/calvinmclean/autoroast"
 	"github.com/calvinmclean/autoroast/controller"
 )
+
+// TODO: Add Note inputs
 
 type RoasterUI struct {
 	// logEntry is used as the target for writing to RoasterUI
@@ -97,7 +100,19 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		cw.Debug()
 	})
 
-	buttonContainer := container.NewGridWithColumns(2,
+	noteEntry := widget.NewEntry()
+	noteEntry.OnSubmitted = func(s string) {
+		if s == "" {
+			return
+		}
+		cw.Note(s)
+		noteEntry.SetText("")
+	}
+	noteButton := widget.NewButtonWithIcon("", theme.ConfirmIcon(), func() {
+		noteEntry.OnSubmitted(noteEntry.Text)
+	})
+
+	buttonContainer := container.NewGridWithColumns(3,
 		cButton,
 		dButton,
 	)
@@ -112,6 +127,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		stateButton,
 		fanContainer,
 		powerContainer,
+		container.NewBorder(nil, nil, nil, noteButton, noteEntry),
 		buttonContainer,
 		logAccordion,
 	)
