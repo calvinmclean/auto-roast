@@ -3,6 +3,7 @@ package ui
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -30,6 +31,8 @@ func (cw *ConfigWindow) loadConfigFromPreferences(cfg *controller.Config) {
 	cfg.TWChartAddr = prefs.StringWithFallback("twchartAddr", "")
 	cfg.SessionName = prefs.StringWithFallback("sessionName", "")
 	cfg.ProbesInput = prefs.StringWithFallback("probesInput", "1=Ambient,2=Beans")
+	cfg.InitialFanSetting = prefs.IntWithFallback("initialFanSetting", 5)
+	cfg.InitialPowerSetting = prefs.IntWithFallback("initialPowerSetting", 5)
 }
 
 func (cw *ConfigWindow) saveConfigToPreferences(cfg *controller.Config) {
@@ -39,11 +42,13 @@ func (cw *ConfigWindow) saveConfigToPreferences(cfg *controller.Config) {
 	prefs.SetString("twchartAddr", cfg.TWChartAddr)
 	prefs.SetString("sessionName", cfg.SessionName)
 	prefs.SetString("probesInput", cfg.ProbesInput)
+	prefs.SetInt("initialFanSetting", cfg.InitialFanSetting)
+	prefs.SetInt("initialPowerSetting", cfg.InitialPowerSetting)
 }
 
 func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	window := cw.app.NewWindow("Auto Roast - Configuration")
-	window.Resize(fyne.NewSize(400, 250))
+	window.Resize(fyne.NewSize(450, 300))
 	window.SetCloseIntercept(func() {
 		// Treat window close as cancel
 		window.Close()
@@ -66,7 +71,9 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 			cfg.SessionName != "" &&
 			cfg.ProbesInput != "" &&
 			cfg.BaudRate != "" &&
-			cfg.TWChartAddr != ""
+			cfg.TWChartAddr != "" &&
+			cfg.InitialFanSetting >= 0 && cfg.InitialFanSetting <= 9 &&
+			cfg.InitialPowerSetting >= 0 && cfg.InitialPowerSetting <= 9
 
 		if allFieldsValid {
 			submitButton.Enable()
@@ -102,6 +109,27 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	twchartAddrEntry := widget.NewEntry()
 	twchartAddrEntry.Bind(binding.BindString(&cfg.TWChartAddr))
 
+	fanEntry := widget.NewSelect([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}, func(s string) {
+		if fan, err := strconv.Atoi(s); err == nil {
+			cfg.InitialFanSetting = fan
+			validateForm()
+		}
+	})
+	fanEntry.SetSelected(strconv.Itoa(cfg.InitialFanSetting))
+	fanEntry.Resize(fyne.NewSize(60, fanEntry.MinSize().Height))
+
+	powerEntry := widget.NewSelect([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}, func(s string) {
+		if power, err := strconv.Atoi(s); err == nil {
+			cfg.InitialPowerSetting = power
+			validateForm()
+		}
+	})
+	powerEntry.SetSelected(strconv.Itoa(cfg.InitialPowerSetting))
+	powerEntry.Resize(fyne.NewSize(60, powerEntry.MinSize().Height))
+
+	initSettingsEntries := container.NewHBox(fanEntry, powerEntry)
+	initSettingsEntries.Resize(fyne.NewSize(120, initSettingsEntries.MinSize().Height))
+
 	// Add listeners to field changes
 	sessionEntry.OnChanged = func(_ string) { validateForm() }
 	probesEntry.OnChanged = func(_ string) { validateForm() }
@@ -132,6 +160,10 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 			container.NewGridWithColumns(2,
 				widget.NewLabel("Probes Input:"),
 				probesEntry,
+			),
+			container.NewGridWithColumns(2,
+				widget.NewLabel("Initial Fan/Power:"),
+				container.NewWithoutLayout(initSettingsEntries),
 			),
 		)),
 		container.NewHBox(

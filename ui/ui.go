@@ -93,10 +93,10 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	logAccordion, logEntry := createLogAccordion()
 	ui.logEntry = logEntry
 
-	cButton := widget.NewButton("Click", func() {
+	clickButton := widget.NewButton("Click", func() {
 		cw.Click()
 	})
-	dButton := widget.NewButton("Debug", func() {
+	debugButton := widget.NewButton("Debug", func() {
 		cw.Debug()
 	})
 
@@ -112,9 +112,9 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		noteEntry.OnSubmitted(noteEntry.Text)
 	})
 
-	buttonContainer := container.NewGridWithColumns(3,
-		cButton,
-		dButton,
+	buttonContainer := container.NewGridWithColumns(2,
+		clickButton,
+		debugButton,
 	)
 
 	contentContainer := container.NewVBox(
@@ -145,6 +145,8 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	// Show config window on startup
 	configWindow := NewConfigWindow(application)
 	configWindow.OnSubmit = func() {
+		defer window.Show()
+
 		c, err := controller.New(cfg)
 		if err != nil {
 			showError(application, window, fmt.Errorf("error creating controller: %w", err))
@@ -178,8 +180,6 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			cancel()
 			_ = c.Close()
 		})
-
-		window.Show()
 	}
 	configWindow.Show(&cfg)
 

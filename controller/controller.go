@@ -29,11 +29,13 @@ type Controller struct {
 }
 
 type Config struct {
-	SerialPort  string
-	BaudRate    string
-	TWChartAddr string
-	SessionName string
-	ProbesInput string
+	SerialPort          string
+	BaudRate            string
+	TWChartAddr         string
+	SessionName         string
+	ProbesInput         string
+	InitialFanSetting   int
+	InitialPowerSetting int
 }
 
 func GetSerialPorts() ([]string, error) {
@@ -71,12 +73,28 @@ func NewConfigFromEnv() Config {
 		probesInput = "1=Ambient,2=Beans"
 	}
 
+	initialFanSetting := 0
+	if fanStr := os.Getenv("INITIAL_FAN_SETTING"); fanStr != "" {
+		if fan, err := strconv.Atoi(fanStr); err == nil && fan >= 1 && fan <= 9 {
+			initialFanSetting = fan
+		}
+	}
+
+	initialPowerSetting := 0
+	if powerStr := os.Getenv("INITIAL_POWER_SETTING"); powerStr != "" {
+		if power, err := strconv.Atoi(powerStr); err == nil && power >= 1 && power <= 9 {
+			initialPowerSetting = power
+		}
+	}
+
 	return Config{
-		SerialPort:  serialPort,
-		BaudRate:    baudRate,
-		TWChartAddr: twchartAddr,
-		SessionName: sessionName,
-		ProbesInput: probesInput,
+		SerialPort:          serialPort,
+		BaudRate:            baudRate,
+		TWChartAddr:         twchartAddr,
+		SessionName:         sessionName,
+		ProbesInput:         probesInput,
+		InitialFanSetting:   initialFanSetting,
+		InitialPowerSetting: initialPowerSetting,
 	}
 }
 
@@ -111,12 +129,27 @@ func New(cfg Config) (Controller, error) {
 		}
 	}
 
-	var client twchartClient = noopTWChartClient{}
-	if cfg.TWChartAddr != "mock" && cfg.TWChartAddr != "" {
-		client = twchart.NewClient(cfg.TWChartAddr)
+	controller := Controller{port: port, twchartClient: noopTWChartClient{}, config: cfg}
+
+	// Set initial fan and power values if they are non-zero
+	if cfg.InitialFanSetting != 0 && cfg.InitialPowerSetting != 0 {
+		cmd := fmt.Sprintf("I%d%d", cfg.InitialFanSetting, cfg.InitialPowerSetting)
+		_, err := controller.passthroughCommand([]byte(cmd))
+		if err != nil {
+			err = fmt.Errorf("error setting initial fan and power: %w", err)
+			if cfg.SerialPort == SerialPortNone {
+				fmt.Println(err)
+			} else {
+				return Controller{}, err
+			}
+		}
 	}
 
-	return Controller{port: port, twchartClient: client, config: cfg}, nil
+	if cfg.TWChartAddr != "mock" && cfg.TWChartAddr != "" {
+		controller.twchartClient = twchart.NewClient(cfg.TWChartAddr)
+	}
+
+	return controller, nil
 }
 
 func (c Controller) Close() error {
