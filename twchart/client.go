@@ -22,8 +22,13 @@ type Client struct {
 }
 
 type session struct {
-	babyapi.DefaultResource
-	Session twchart.Session
+	// include NilResource so we don't implement Render/Bind which are not needed
+	*babyapi.NilResource
+	twchart.Session
+}
+
+func (s session) GetID() string {
+	return s.Session.GetID()
 }
 
 func NewClient(addr string) *Client {
