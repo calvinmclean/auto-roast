@@ -5,7 +5,7 @@ go 1.25.1
 require (
 	fyne.io/fyne/v2 v2.7.1
 	github.com/calvinmclean/babyapi v0.32.0
-	github.com/calvinmclean/twchart v0.2.0
+	github.com/calvinmclean/twchart v0.3.0
 	go.bug.st/serial v1.6.4
 	tinygo.org/x/drivers v0.33.0
 )

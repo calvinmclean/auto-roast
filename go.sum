@@ -14,8 +14,8 @@ github.com/buger/jsonparser v1.1.1 h1:2PnMjfWD7wBILjqQbt530v576A/cAbQvEW9gGIpYMU
 github.com/buger/jsonparser v1.1.1/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=
 github.com/calvinmclean/babyapi v0.32.0 h1:MkIb3dtLB6Wu5r/Gmqjn7lbJvqqKz0DEMgfTnAMuLHA=
 github.com/calvinmclean/babyapi v0.32.0/go.mod h1:6jt5eKhxpZ8kbuNcn3lB5b71LtrxXb0igBfFu5/UB7s=
-github.com/calvinmclean/twchart v0.2.0 h1:77KfjyioE9ea9kYuWlnDNtvlBVFCsp33blJBnO6MQU8=
-github.com/calvinmclean/twchart v0.2.0/go.mod h1:V8vKriQFsmzrlQetyIrcqu1ApW7QMWzvMCZ2l6ju/ag=
+github.com/calvinmclean/twchart v0.3.0 h1:5nLhrwkB/daQNDdVYA0sxpAb7zqq43BbZLDW2ZwQAYs=
+github.com/calvinmclean/twchart v0.3.0/go.mod h1:szz10o87LRt8l3GLkeEIQ2bTa3Tn4m3PCnQ1v3rraJY=
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/creack/goselect v0.1.2 h1:2DNy14+JPjRBgPzAd1thbQp4BSIihxcBf0IXhQXDRa0=
 github.com/creack/goselect v0.1.2/go.mod h1:a/NhLweNvqIYMuxcMOuWY516Cimucms3DglDzQP3hKY=

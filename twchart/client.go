@@ -40,6 +40,7 @@ func (c *Client) CreateSession(ctx context.Context, beanName string, probes Prob
 	resp, err := c.client.Post(ctx, &session{
 		Session: twchart.Session{
 			Name:   beanName,
+			Type:   twchart.SessionTypeCoffee,
 			Date:   time.Now(),
 			Probes: []twchart.Probe(probes),
 		},
