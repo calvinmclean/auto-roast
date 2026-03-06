@@ -250,7 +250,13 @@ func (d *Device) IncreaseTime() {
 
 // Move moves the stepper by the specified number of increments
 func (d *Device) Move(n int32) {
-	rawMove := float32(n)*d.calibrationCfg.StepsPerIncrement + d.remainder
+	rawMove := float32(n) * d.calibrationCfg.StepsPerIncrement
+
+	if n == 1 || n == -1 {
+		rawMove += float32(n) * 0.5 * d.calibrationCfg.StepsPerIncrement
+	}
+
+	rawMove += d.remainder
 
 	move := int32(math.Round(float64(rawMove)))
 	d.remainder = rawMove - float32(move)
