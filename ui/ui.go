@@ -58,6 +58,9 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		stateButton.SetText(currentState.next().String())
 
 		switch currentState {
+		case stateRoasting:
+			// reset the timer when roasting starts
+			overallTimer.Set(time.Now())
 		case stateFirstCrack:
 			fcTimer.text.Color = color.RGBA{R: 139, G: 0, B: 0, A: 255}
 			fcTimer.Set(time.Now())
