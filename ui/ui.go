@@ -76,14 +76,14 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		cw.RunStateCommand(currentState)
 	})
 
-	fanContainer := createSlider(
+	fanContainer, setFanSlider := createSlider(
 		"Fan",
 		cw.SetFan,
 		cw.FixFan,
 		window.Canvas().Focus,
 	)
 
-	powerContainer := createSlider(
+	powerContainer, setPowerSlider := createSlider(
 		"Power",
 		cw.SetPower,
 		cw.FixPower,
@@ -146,6 +146,9 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	configWindow := NewConfigWindow(application)
 	configWindow.OnSubmit = func() {
 		defer window.Show()
+
+		setFanSlider(float64(cfg.InitialFanSetting))
+		setPowerSlider(float64(cfg.InitialPowerSetting))
 
 		c, err := controller.New(cfg)
 		if err != nil {
@@ -214,7 +217,7 @@ func (ui *RoasterUI) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func createSlider(labelText string, onSet func(float64), onFix func(int), setFocus func(fyne.Focusable)) *fyne.Container {
+func createSlider(labelText string, onSet func(float64), onFix func(int), setFocus func(fyne.Focusable)) (*fyne.Container, func(float64)) {
 	defaultValue := 1.0
 	valueLabel := widget.NewLabel(fmt.Sprintf("%.0f", defaultValue))
 
@@ -254,7 +257,10 @@ func createSlider(labelText string, onSet func(float64), onFix func(int), setFoc
 		slider,
 	)
 
-	return container
+	return container, func(f float64) {
+		slider.Value = f
+		slider.OnChanged(f)
+	}
 }
 
 func createLogAccordion() (*widget.Accordion, *widget.Entry) {
