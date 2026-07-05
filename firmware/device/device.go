@@ -11,6 +11,8 @@ import (
 	"tinygo.org/x/drivers/servo"
 )
 
+const selectModeTimeout = 3 * time.Second
+
 // Device controls the FreshRoast SR800. It manages the Stepper and Servo motors and the machine's state
 type Device struct {
 	stepper        *Stepper
@@ -23,9 +25,9 @@ type Device struct {
 
 	startTime time.Time
 
-	// lastClick is used to track the last click of the FreshRoast button. This is important because it lets us
-	// know if the first click will enable changing currentControlMode or will increment the ControlMode
-	lastClick time.Time
+	// lastChange tracks the last completed interaction with the FreshRoast (button click or stepper move).
+	// It is used to decide whether GoToMode needs an extra click to re-enter the device's select mode.
+	lastChange time.Time
 
 	verbose bool
 
@@ -59,7 +61,7 @@ func New(stepperCfg StepperConfig, servoCfg ServoConfig, calibrationCfg Calibrat
 		fan:                0,
 		power:              0,
 		startTime:          time.Time{},
-		lastClick:          time.Time{},
+		lastChange:         time.Time{},
 		verbose:            false,
 	}, nil
 }
@@ -101,7 +103,7 @@ func (d *Device) ClickButton() {
 		return
 	}
 
-	d.lastClick = time.Now()
+	d.lastChange = time.Now()
 	time.Sleep(d.calibrationCfg.ServoResetDelay)
 }
 
@@ -120,7 +122,7 @@ func (d *Device) GoToMode(target autoroast.ControlMode) bool {
 	// click an extra time to get back into "select mode"
 	var clicked bool
 	if !d.startTime.IsZero() {
-		if time.Since(d.lastClick) > 3*time.Second {
+		if time.Since(d.lastChange) > selectModeTimeout {
 			d.ClickButton()
 			clicked = true
 		}
@@ -275,6 +277,9 @@ func (d *Device) Move(n int32) {
 	}
 
 	d.stepper.Move(move)
+
+	// Set lastChange before backsteps since the backsteps shouldn't actually move the roaster knob
+	d.lastChange = time.Now()
 
 	if backsteps != 0 {
 		time.Sleep(200 * time.Millisecond)
