@@ -23,6 +23,10 @@ func (c *controllerWrapper) Debug() {
 	fmt.Fprint(c.writer, "D\n")
 }
 
+func (c *controllerWrapper) IncreaseTime() {
+	fmt.Fprint(c.writer, "T\n")
+}
+
 func (c *controllerWrapper) SetFan(value float64) {
 	c.lastEventTimer.Set(time.Now())
 	fmt.Fprintf(c.writer, "F%.0f\n", value)

@@ -102,6 +102,9 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	debugButton := widget.NewButton("Debug", func() {
 		cw.Debug()
 	})
+	increaseTimeButton := widget.NewButton("Increase Time", func() {
+		cw.IncreaseTime()
+	})
 
 	noteEntry := widget.NewEntry()
 	noteEntry.OnSubmitted = func(s string) {
@@ -115,9 +118,10 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		noteEntry.OnSubmitted(noteEntry.Text)
 	})
 
-	buttonContainer := container.NewGridWithColumns(2,
+	buttonContainer := container.NewGridWithColumns(3,
 		clickButton,
 		debugButton,
+		increaseTimeButton,
 	)
 
 	contentContainer := container.NewVBox(
