@@ -96,6 +96,24 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	logAccordion, logEntry := createLogAccordion()
 	ui.logEntry = logEntry
 
+	var replayQueueItems []string
+	replayStatus := widget.NewLabel("Manual control")
+	replayStatus.Wrapping = fyne.TextWrapWord
+	replayQueue := widget.NewList(
+		func() int { return len(replayQueueItems) },
+		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func(id widget.ListItemID, object fyne.CanvasObject) {
+			object.(*widget.Label).SetText(replayQueueItems[id])
+		},
+	)
+	var cancelReplay context.CancelFunc
+	cancelReplayButton := widget.NewButton("Cancel Planned Roast", func() {
+		if cancelReplay != nil {
+			cancelReplay()
+		}
+	})
+	cancelReplayButton.Disable()
+
 	clickButton := widget.NewButton("Click", func() {
 		cw.Click()
 	})
@@ -136,6 +154,11 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		powerContainer,
 		container.NewBorder(nil, nil, nil, noteButton, noteEntry),
 		buttonContainer,
+		widget.NewSeparator(),
+		widget.NewLabel("Planned Roast"),
+		replayStatus,
+		cancelReplayButton,
+		container.NewGridWrap(fyne.NewSize(360, 120), replayQueue),
 		logAccordion,
 	)
 
@@ -146,13 +169,23 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		})
 	}()
 
-	window.SetContent(contentContainer)
-	window.Resize(fyne.NewSize(300, 200))
+	window.SetContent(container.NewVScroll(contentContainer))
+	window.Resize(fyne.NewSize(420, 600))
 
 	// Show config window on startup
 	configWindow := NewConfigWindow(application)
 	configWindow.OnSubmit = func() {
 		defer window.Show()
+
+		var replayActions []controller.ReplayAction
+		if cfg.RoastFile != "" {
+			var err error
+			replayActions, err = controller.LoadReplay(cfg.RoastFile)
+			if err != nil {
+				showError(application, window, fmt.Errorf("error loading replay file: %w", err))
+				return
+			}
+		}
 
 		setFanSlider(float64(cfg.InitialFanSetting))
 		setPowerSlider(float64(cfg.InitialPowerSetting))
@@ -186,7 +219,42 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			}
 		}()
 
+		if len(replayActions) > 0 {
+			replayCtx, replayCancel := context.WithCancel(controllerCtx)
+			cancelReplay = replayCancel
+			go func() {
+				err := controller.RunReplay(replayCtx, replayActions, w, func(state controller.ReplayState) {
+					fyne.Do(func() {
+						replayQueueItems = state.Queued
+						replayQueue.Refresh()
+						switch {
+						case state.Running && state.Current != "":
+							replayStatus.SetText("Current: " + state.Current)
+							cancelReplayButton.Enable()
+						case state.Running:
+							replayStatus.SetText("Planned roast starting")
+							cancelReplayButton.Enable()
+						case state.Cancelled:
+							replayStatus.SetText("Planned roast cancelled. Manual control enabled.")
+							cancelReplayButton.Disable()
+						default:
+							replayStatus.SetText("Planned roast complete. Manual control enabled.")
+							cancelReplayButton.Disable()
+						}
+					})
+				})
+				if err != nil {
+					fyne.Do(func() {
+						showError(application, window, fmt.Errorf("error running replay: %w", err))
+					})
+				}
+			}()
+		}
+
 		window.SetOnClosed(func() {
+			if cancelReplay != nil {
+				cancelReplay()
+			}
 			cancel()
 			_ = c.Close()
 		})

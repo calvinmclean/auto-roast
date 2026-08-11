@@ -36,6 +36,7 @@ type Config struct {
 	ProbesInput         string
 	InitialFanSetting   int
 	InitialPowerSetting int
+	RoastFile           string
 }
 
 func GetSerialPorts() ([]string, error) {
