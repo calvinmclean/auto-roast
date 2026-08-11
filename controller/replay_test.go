@@ -100,8 +100,11 @@ func TestRunReplayCancellationStopsWait(t *testing.T) {
 		})
 	}()
 
-	<-states // initial state
-	<-states // active wait state
+	<-states           // initial state
+	active := <-states // active wait state
+	if active.WaitUntil.Before(time.Now().Add(59 * time.Minute)) {
+		t.Errorf("WaitUntil = %v, want roughly one hour from now", active.WaitUntil)
+	}
 	cancel()
 	if err := <-done; err != nil {
 		t.Fatalf("RunReplay() error = %v", err)
@@ -109,5 +112,8 @@ func TestRunReplayCancellationStopsWait(t *testing.T) {
 	final := <-states
 	if !final.Cancelled || final.Running || final.Current != "WAIT 1h0m0s" {
 		t.Errorf("final state = %#v, want cancelled wait state", final)
+	}
+	if !final.WaitUntil.IsZero() {
+		t.Errorf("WaitUntil = %v after cancellation, want zero", final.WaitUntil)
 	}
 }

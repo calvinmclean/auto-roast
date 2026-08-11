@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/color"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"time"
@@ -119,6 +120,47 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	var replayQueueItems []string
 	replayStatus := widget.NewLabel("Manual control")
 	replayStatus.Wrapping = fyne.TextWrapWord
+	waitCountdown := widget.NewLabel("")
+	waitCountdown.Hide()
+	var waitCountdownCancel context.CancelFunc
+	var waitCountdownID uint
+	updateWaitCountdown := func(waitUntil time.Time) {
+		waitCountdownID++
+		id := waitCountdownID
+		if waitCountdownCancel != nil {
+			waitCountdownCancel()
+		}
+		if waitUntil.IsZero() {
+			waitCountdown.SetText("")
+			waitCountdown.Hide()
+			return
+		}
+
+		waitCountdown.Show()
+		countdownCtx, cancelCountdown := context.WithCancel(ctx)
+		waitCountdownCancel = cancelCountdown
+		go func() {
+			ticker := time.NewTicker(200 * time.Millisecond)
+			defer ticker.Stop()
+			for {
+				remaining := time.Until(waitUntil)
+				fyne.Do(func() {
+					if id == waitCountdownID {
+						waitCountdown.SetText(formatWaitRemaining(remaining))
+					}
+				})
+				if remaining <= 0 {
+					return
+				}
+
+				select {
+				case <-countdownCtx.Done():
+					return
+				case <-ticker.C:
+				}
+			}
+		}()
+	}
 	replayQueue := widget.NewList(
 		func() int { return len(replayQueueItems) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
@@ -168,7 +210,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		increaseTimeButton,
 	)
 
-	contentContainer := container.NewVBox(
+	manualControls := container.NewVBox(
 		container.NewHBox(
 			container.NewPadded(overallTimer.text),
 			container.NewPadded(lastEventTimer.text),
@@ -180,12 +222,26 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		powerContainer,
 		container.NewBorder(nil, nil, nil, noteButton, noteEntry),
 		buttonContainer,
-		widget.NewSeparator(),
-		widget.NewLabel("Planned Roast"),
-		replayStatus,
-		replayButton,
-		container.NewGridWrap(fyne.NewSize(360, 120), replayQueue),
+	)
+	replayControls := container.NewBorder(
+		container.NewVBox(
+			widget.NewLabel("Planned Roast"),
+			container.NewBorder(nil, nil, nil, waitCountdown, replayStatus),
+			replayButton,
+		),
+		nil,
+		nil,
+		nil,
+		replayQueue,
+	)
+	roastSplit := container.NewHSplit(manualControls, replayControls)
+	roastSplit.SetOffset(0.45)
+	contentContainer := container.NewBorder(
+		nil,
 		logAccordion,
+		nil,
+		nil,
+		roastSplit,
 	)
 
 	go func() {
@@ -195,8 +251,8 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		})
 	}()
 
-	window.SetContent(container.NewVScroll(contentContainer))
-	window.Resize(fyne.NewSize(420, 600))
+	window.SetContent(contentContainer)
+	window.Resize(fyne.NewSize(880, 480))
 
 	// Show config window on startup
 	configWindow := NewConfigWindow(application)
@@ -276,6 +332,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 						fyne.Do(func() {
 							replayQueueItems = state.Queued
 							replayQueue.Refresh()
+							updateWaitCountdown(state.WaitUntil)
 							switch {
 							case state.Running && state.Current != "":
 								replayStatus.SetText("Current: " + state.Current)
@@ -309,6 +366,9 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		window.SetOnClosed(func() {
 			if cancelReplay != nil {
 				cancelReplay()
+			}
+			if waitCountdownCancel != nil {
+				waitCountdownCancel()
 			}
 			_ = commandWriter.Close()
 			cancel()
@@ -408,4 +468,13 @@ func createLogAccordion() (*widget.Accordion, *widget.Entry) {
 	return widget.NewAccordion(
 		widget.NewAccordionItem("Logs", logScroll),
 	), logScroll
+}
+
+func formatWaitRemaining(remaining time.Duration) string {
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	seconds := int(math.Ceil(remaining.Seconds()))
+	return fmt.Sprintf("%02d:%02d", seconds/60, seconds%60)
 }

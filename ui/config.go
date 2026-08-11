@@ -3,6 +3,7 @@ package ui
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	"fyne.io/fyne/v2"
@@ -133,11 +134,7 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	initSettingsEntries := container.NewHBox(fanEntry, powerEntry)
 	initSettingsEntries.Resize(fyne.NewSize(120, initSettingsEntries.MinSize().Height))
 
-	roastFileLabel := widget.NewLabel(cfg.RoastFile)
-	if cfg.RoastFile == "" {
-		roastFileLabel.SetText("No replay file selected")
-	}
-	roastFileLabel.Wrapping = fyne.TextWrapWord
+	roastFileLabel := widget.NewLabel(roastFileDisplay(cfg.RoastFile))
 	selectRoastFile := widget.NewButton("Browse", func() {
 		path, err := nativeDialog.File().Title("Select roast replay file").Load()
 		if errors.Is(err, nativeDialog.ErrCancelled) {
@@ -149,11 +146,11 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 		}
 
 		cfg.RoastFile = path
-		roastFileLabel.SetText(cfg.RoastFile)
+		roastFileLabel.SetText(roastFileDisplay(cfg.RoastFile))
 	})
 	clearRoastFile := widget.NewButton("Clear", func() {
 		cfg.RoastFile = ""
-		roastFileLabel.SetText("No replay file selected")
+		roastFileLabel.SetText(roastFileDisplay(cfg.RoastFile))
 	})
 
 	// Add listeners to field changes
@@ -206,6 +203,19 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	)
 
 	window.SetContent(form)
+}
+
+func roastFileDisplay(path string) string {
+	if path == "" {
+		return "No replay file selected"
+	}
+
+	file := filepath.Base(path)
+	parent := filepath.Base(filepath.Dir(path))
+	if parent == "." || parent == string(filepath.Separator) {
+		return file
+	}
+	return filepath.Join("...", parent, file)
 }
 
 func showError(app fyne.App, window fyne.Window, err error) {
