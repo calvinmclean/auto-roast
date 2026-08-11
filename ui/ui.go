@@ -82,13 +82,19 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		stateButton.Disable()
 		cw.RunStateCommand(currentState.next())
 	})
+	var setFanSlider, setPowerSlider func(float64)
 	applyCommand := func(command string) {
 		fyne.Do(func() {
 			if target := stateForCommand(command); target != stateNone && currentState.next() == target {
 				advanceState()
 			}
-			if changesSetting(command) {
+			if setting, value, ok := settingValue(command); ok {
 				lastEventTimer.Set(time.Now())
+				if setting == 'F' {
+					setFanSlider(value)
+				} else {
+					setPowerSlider(value)
+				}
 			}
 		})
 	}
@@ -385,6 +391,7 @@ func createSlider(labelText string, onSet func(float64), onFix func(int), setFoc
 	return container, func(f float64) {
 		slider.Value = f
 		slider.OnChanged(f)
+		slider.Refresh()
 	}
 }
 

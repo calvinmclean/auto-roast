@@ -23,19 +23,22 @@ func TestStateForCommand(t *testing.T) {
 	}
 }
 
-func TestChangesSetting(t *testing.T) {
-	for command, want := range map[string]bool{
-		"F5":      true,
-		"P9":      true,
-		"f5":      false,
-		"p9":      false,
-		"FC":      false,
-		"PREHEAT": false,
-		"F0":      false,
+func TestSettingValue(t *testing.T) {
+	for command, want := range map[string]struct {
+		prefix byte
+		value  float64
+		ok     bool
+	}{
+		"F5":   {'F', 5, true},
+		"P4.5": {'P', 4.5, true},
+		"F10":  {0, 0, false},
+		"P0":   {0, 0, false},
+		"FC":   {0, 0, false},
 	} {
 		t.Run(command, func(t *testing.T) {
-			if got := changesSetting(command); got != want {
-				t.Errorf("changesSetting(%q) = %t, want %t", command, got, want)
+			prefix, value, ok := settingValue(command)
+			if prefix != want.prefix || value != want.value || ok != want.ok {
+				t.Errorf("settingValue(%q) = (%q, %v, %t), want (%q, %v, %t)", command, prefix, value, ok, want.prefix, want.value, want.ok)
 			}
 		})
 	}

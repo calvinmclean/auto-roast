@@ -1,0 +1,17 @@
+# Example replay profile for a fast roast to observe UI.
+S
+PREHEAT
+WAIT 1s
+ROASTING
+WAIT 3s
+F5
+WAIT 3s
+F1
+WAIT 3s
+P6
+WAIT 3s
+P6
+WAIT 3s
+FC
+WAIT 1s
+COOL

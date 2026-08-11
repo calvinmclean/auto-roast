@@ -1,6 +1,9 @@
 package ui
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 type state int
 
@@ -72,10 +75,15 @@ func stateForCommand(command string) state {
 	}
 }
 
-func changesSetting(command string) bool {
+func settingValue(command string) (byte, float64, bool) {
 	command = strings.TrimSpace(command)
 	if len(command) < 2 || (command[0] != 'F' && command[0] != 'P') {
-		return false
+		return 0, 0, false
 	}
-	return command[1] >= '1' && command[1] <= '9'
+
+	value, err := strconv.ParseFloat(command[1:], 64)
+	if err != nil || value < 1 || value > 9 {
+		return 0, 0, false
+	}
+	return command[0], value, true
 }
