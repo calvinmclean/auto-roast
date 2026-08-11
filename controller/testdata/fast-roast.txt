@@ -10,7 +10,7 @@ F1
 WAIT 3s
 P6
 WAIT 3s
-P6
+P4
 WAIT 3s
 FC
 WAIT 1s

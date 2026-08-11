@@ -24,7 +24,7 @@ var ErrNoUSBSerial = errors.New("no USB serial ports found")
 
 type Controller struct {
 	twchartClient twchartClient
-	port          serial.Port
+	port          io.ReadWriteCloser
 	config        Config
 }
 
@@ -121,8 +121,10 @@ func New(cfg Config) (Controller, error) {
 		BaudRate: baudRate,
 	}
 
-	var port serial.Port
-	if cfg.SerialPort != SerialPortNone {
+	var port io.ReadWriteCloser
+	if cfg.SerialPort == SerialPortNone {
+		port = &mockPort{}
+	} else {
 		var err error
 		port, err = serial.Open(cfg.SerialPort, mode)
 		if err != nil {
