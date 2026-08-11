@@ -1,0 +1,3 @@
+# Invalid replay profile used to verify parse errors.
+S
+WAIT soon

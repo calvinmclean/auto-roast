@@ -3,28 +3,46 @@ package controller
 import (
 	"bytes"
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
 
-func TestParseReplay(t *testing.T) {
-	actions, err := ParseReplay(strings.NewReader("\n# First action\nS\nWAIT 30s\nF5\n"))
-	if err != nil {
-		t.Fatalf("ParseReplay() error = %v", err)
+func TestLoadReplay(t *testing.T) {
+	tests := []struct {
+		name         string
+		actions      int
+		firstCommand string
+		firstWait    time.Duration
+	}{
+		{name: "classic-roast.txt", actions: 11, firstCommand: "S", firstWait: 45 * time.Second},
+		{name: "short-roast.txt", actions: 5, firstCommand: "S", firstWait: 15 * time.Second},
 	}
 
-	if got, want := len(actions), 3; got != want {
-		t.Fatalf("len(actions) = %d, want %d", got, want)
-	}
-	if got, want := actions[0].command, "S"; got != want {
-		t.Errorf("first command = %q, want %q", got, want)
-	}
-	if got, want := actions[1].wait, 30*time.Second; got != want {
-		t.Errorf("wait = %s, want %s", got, want)
-	}
-	if got, want := actions[2].line, 5; got != want {
-		t.Errorf("last line = %d, want %d", got, want)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actions, err := LoadReplay(filepath.Join("testdata", tt.name))
+			if err != nil {
+				t.Fatalf("LoadReplay() error = %v", err)
+			}
+			if got := len(actions); got != tt.actions {
+				t.Errorf("len(actions) = %d, want %d", got, tt.actions)
+			}
+			if got := actions[0].command; got != tt.firstCommand {
+				t.Errorf("first command = %q, want %q", got, tt.firstCommand)
+			}
+			var firstWait time.Duration
+			for _, action := range actions {
+				if action.wait > 0 {
+					firstWait = action.wait
+					break
+				}
+			}
+			if got := firstWait; got != tt.firstWait {
+				t.Errorf("first wait = %s, want %s", got, tt.firstWait)
+			}
+		})
 	}
 }
 
@@ -36,6 +54,13 @@ func TestParseReplayInvalidWait(t *testing.T) {
 				t.Errorf("ParseReplay() error = %v, want line-numbered error", err)
 			}
 		})
+	}
+}
+
+func TestLoadReplayInvalidWait(t *testing.T) {
+	_, err := LoadReplay(filepath.Join("testdata", "invalid-wait-roast.txt"))
+	if err == nil || !strings.Contains(err.Error(), "line 3") {
+		t.Errorf("LoadReplay() error = %v, want line-numbered error", err)
 	}
 }
 

@@ -1,0 +1,12 @@
+# Example replay profile for a standard roast.
+S
+PREHEAT
+WAIT 45s
+ROASTING
+WAIT 3m
+F5
+WAIT 30s
+P6
+FC
+WAIT 1m
+COOL
