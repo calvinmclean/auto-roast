@@ -3,12 +3,10 @@ package ui
 import (
 	"fmt"
 	"io"
-	"time"
 )
 
 type controllerWrapper struct {
-	writer         io.Writer
-	lastEventTimer *timer
+	writer io.Writer
 }
 
 func (c *controllerWrapper) Note(note string) {
@@ -28,7 +26,6 @@ func (c *controllerWrapper) IncreaseTime() {
 }
 
 func (c *controllerWrapper) SetFan(value float64) {
-	c.lastEventTimer.Set(time.Now())
 	fmt.Fprintf(c.writer, "F%.0f\n", value)
 }
 
@@ -37,7 +34,6 @@ func (c *controllerWrapper) FixFan(value int) {
 }
 
 func (c *controllerWrapper) SetPower(value float64) {
-	c.lastEventTimer.Set(time.Now())
 	fmt.Fprintf(c.writer, "P%.0f\n", value)
 }
 
