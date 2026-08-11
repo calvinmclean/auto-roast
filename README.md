@@ -45,6 +45,12 @@ Tasks for development, testing, and deployment are managed via the Taskfile. Exa
     ```bash
     task serial-test
     ```
+
+### Replay Files
+
+The UI can replay a manually-authored file of commands. Use one command per line;
+blank lines and lines beginning with `#` are ignored. Add `WAIT <duration>` between
+commands using Go duration syntax, such as `WAIT 30s` or `WAIT 3m12s`.
 - **Build Firmware:**
     ```bash
     task build
