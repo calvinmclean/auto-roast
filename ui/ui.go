@@ -169,14 +169,39 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		func() fyne.CanvasObject {
 			label := widget.NewLabel("")
 			label.Truncation = fyne.TextTruncateEllipsis
+			moveUpButton := widget.NewButton("^", nil)
+			moveDownButton := widget.NewButton("v", nil)
 			removeButton := widget.NewButton("X", nil)
-			return container.NewBorder(nil, nil, nil, removeButton, label)
+			return container.NewBorder(nil, nil, container.NewHBox(moveUpButton, moveDownButton, removeButton), nil, label)
 		},
 		func(id widget.ListItemID, object fyne.CanvasObject) {
 			item := replayQueueItems[id]
 			row := object.(*fyne.Container)
 			row.Objects[0].(*widget.Label).SetText(item.Text)
-			removeButton := row.Objects[1].(*widget.Button)
+			buttons := row.Objects[1].(*fyne.Container)
+			moveUpButton := buttons.Objects[0].(*widget.Button)
+			moveDownButton := buttons.Objects[1].(*widget.Button)
+			removeButton := buttons.Objects[2].(*widget.Button)
+			moveUpButton.OnTapped = func() {
+				if replay != nil {
+					replay.MoveQueued(item.ID, -1)
+				}
+			}
+			moveDownButton.OnTapped = func() {
+				if replay != nil {
+					replay.MoveQueued(item.ID, 1)
+				}
+			}
+			if id == 0 {
+				moveUpButton.Disable()
+			} else {
+				moveUpButton.Enable()
+			}
+			if id == len(replayQueueItems)-1 {
+				moveDownButton.Disable()
+			} else {
+				moveDownButton.Enable()
+			}
 			removeButton.Enable()
 			removeButton.OnTapped = func() {
 				if replay != nil && replay.RemoveQueued(item.ID) {
@@ -198,6 +223,20 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			row.Refresh()
 		},
 	)
+	addReplayEntry := widget.NewEntry()
+	addReplayEntry.SetPlaceHolder("Command or WAIT 30s")
+	addReplayAction := func() {
+		if replay == nil || addReplayEntry.Text == "" {
+			return
+		}
+		if err := replay.AddQueued(addReplayEntry.Text); err != nil {
+			replayStatus.SetText("Invalid action: " + err.Error())
+			return
+		}
+		addReplayEntry.SetText("")
+	}
+	addReplayEntry.OnSubmitted = func(string) { addReplayAction() }
+	addReplayButton := widget.NewButton("+", addReplayAction)
 	var cancelReplay context.CancelFunc
 	var startReplay func()
 	replayButton = widget.NewButton("Start Planned Roast", func() {
@@ -257,6 +296,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			widget.NewLabel("Planned Roast"),
 			container.NewBorder(nil, nil, nil, waitCountdown, replayStatus),
 			replayButton,
+			container.NewBorder(nil, nil, nil, addReplayButton, addReplayEntry),
 		),
 		nil,
 		nil,

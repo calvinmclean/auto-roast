@@ -137,6 +137,26 @@ func TestReplayRemoveQueuedDuringWait(t *testing.T) {
 	}
 }
 
+func TestReplayAddAndMoveQueued(t *testing.T) {
+	replay := NewReplay([]ReplayAction{{line: 1, command: "F5"}}, func(ReplayState) {})
+	if err := replay.AddQueued("WAIT 30s"); err != nil {
+		t.Fatalf("AddQueued() error = %v", err)
+	}
+	state := replay.State()
+	if got, want := state.Queued[1].Text, "WAIT 30s"; got != want {
+		t.Fatalf("second action = %q, want %q", got, want)
+	}
+	if !replay.MoveQueued(state.Queued[1].ID, -1) {
+		t.Fatal("MoveQueued() = false, want true")
+	}
+	if got, want := replay.State().Queued[0].Text, "WAIT 30s"; got != want {
+		t.Errorf("first action after move = %q, want %q", got, want)
+	}
+	if err := replay.AddQueued("WAIT never"); err == nil {
+		t.Error("AddQueued() error = nil, want invalid wait error")
+	}
+}
+
 func TestRunReplayCancellationStopsWait(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

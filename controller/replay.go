@@ -3,6 +3,7 @@ package controller
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -72,6 +73,53 @@ func (r *Replay) RemoveQueued(id int) bool {
 			r.notify(state)
 			return true
 		}
+	}
+	r.mu.Unlock()
+	return false
+}
+
+func (r *Replay) AddQueued(input string) error {
+	actions, err := ParseReplay(strings.NewReader(input))
+	if err != nil {
+		return err
+	}
+	if len(actions) != 1 {
+		return errors.New("add action requires exactly one command or WAIT")
+	}
+
+	r.mu.Lock()
+	nextID := 0
+	if r.current != nil {
+		nextID = r.current.id + 1
+	}
+	for _, item := range r.queued {
+		if item.id >= nextID {
+			nextID = item.id + 1
+		}
+	}
+	r.queued = append(r.queued, replayItem{id: nextID, action: actions[0]})
+	state := r.stateLocked()
+	r.mu.Unlock()
+	r.notify(state)
+	return nil
+}
+
+func (r *Replay) MoveQueued(id, offset int) bool {
+	r.mu.Lock()
+	for i, item := range r.queued {
+		if item.id != id {
+			continue
+		}
+		to := i + offset
+		if to < 0 || to >= len(r.queued) {
+			r.mu.Unlock()
+			return false
+		}
+		r.queued[i], r.queued[to] = r.queued[to], r.queued[i]
+		state := r.stateLocked()
+		r.mu.Unlock()
+		r.notify(state)
+		return true
 	}
 	r.mu.Unlock()
 	return false
