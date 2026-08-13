@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,10 +26,76 @@ func (a ReplayAction) String() string {
 
 type ReplayState struct {
 	Current   string
-	Queued    []string
+	Queued    []ReplayQueuedAction
+	Started   bool
 	Running   bool
 	Cancelled bool
 	WaitUntil time.Time
+}
+
+type ReplayQueuedAction struct {
+	ID   int
+	Text string
+}
+
+type replayItem struct {
+	id     int
+	action ReplayAction
+}
+
+type Replay struct {
+	mu        sync.Mutex
+	queued    []replayItem
+	current   *replayItem
+	started   bool
+	running   bool
+	cancelled bool
+	waitUntil time.Time
+	notify    func(ReplayState)
+}
+
+func NewReplay(actions []ReplayAction, notify func(ReplayState)) *Replay {
+	r := &Replay{notify: notify}
+	for id, action := range actions {
+		r.queued = append(r.queued, replayItem{id: id, action: action})
+	}
+	return r
+}
+
+func (r *Replay) RemoveQueued(id int) bool {
+	r.mu.Lock()
+	for i, item := range r.queued {
+		if item.id == id {
+			r.queued = append(r.queued[:i], r.queued[i+1:]...)
+			state := r.stateLocked()
+			r.mu.Unlock()
+			r.notify(state)
+			return true
+		}
+	}
+	r.mu.Unlock()
+	return false
+}
+
+func (r *Replay) State() ReplayState {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.stateLocked()
+}
+
+func (r *Replay) stateLocked() ReplayState {
+	state := ReplayState{Started: r.started, Running: r.running, Cancelled: r.cancelled, WaitUntil: r.waitUntil}
+	if r.current != nil {
+		state.Current = r.current.action.String()
+	}
+	for _, item := range r.queued {
+		state.Queued = append(state.Queued, ReplayQueuedAction{ID: item.id, Text: item.action.String()})
+	}
+	return state
+}
+
+func (r *Replay) emit() {
+	r.notify(r.State())
 }
 
 func LoadReplay(path string) ([]ReplayAction, error) {
@@ -74,51 +141,64 @@ func ParseReplay(r io.Reader) ([]ReplayAction, error) {
 }
 
 func RunReplay(ctx context.Context, actions []ReplayAction, writer io.Writer, notify func(ReplayState)) error {
-	emit := func(current int, running, cancelled bool, waitUntil time.Time) {
-		state := ReplayState{Running: running, Cancelled: cancelled, WaitUntil: waitUntil}
-		if current >= 0 && current < len(actions) {
-			state.Current = actions[current].String()
-			for _, action := range actions[current+1:] {
-				state.Queued = append(state.Queued, action.String())
-			}
-		} else if current < 0 {
-			for _, action := range actions {
-				state.Queued = append(state.Queued, action.String())
-			}
-		}
-		notify(state)
-	}
+	return NewReplay(actions, notify).Run(ctx, writer)
+}
 
-	emit(-1, true, false, time.Time{})
-	for i, action := range actions {
-		if err := ctx.Err(); err != nil {
-			emit(i, false, true, time.Time{})
+func (r *Replay) Run(ctx context.Context, writer io.Writer) error {
+	r.mu.Lock()
+	r.started = true
+	r.running = true
+	r.cancelled = false
+	r.mu.Unlock()
+	r.emit()
+
+	for {
+		if ctx.Err() != nil {
+			r.mu.Lock()
+			r.running = false
+			r.cancelled = true
+			r.waitUntil = time.Time{}
+			r.mu.Unlock()
+			r.emit()
 			return nil
 		}
 
-		if action.wait > 0 {
-			waitUntil := time.Now().Add(action.wait)
-			emit(i, true, false, waitUntil)
+		r.mu.Lock()
+		if len(r.queued) == 0 {
+			r.current = nil
+			r.running = false
+			r.waitUntil = time.Time{}
+			r.mu.Unlock()
+			r.emit()
+			return nil
+		}
+		item := r.queued[0]
+		r.queued = r.queued[1:]
+		r.current = &item
+		if item.action.wait > 0 {
+			r.waitUntil = time.Now().Add(item.action.wait)
+		} else {
+			r.waitUntil = time.Time{}
+		}
+		waitUntil := r.waitUntil
+		r.mu.Unlock()
+		r.emit()
+
+		if item.action.wait > 0 {
 			timer := time.NewTimer(time.Until(waitUntil))
 			select {
 			case <-ctx.Done():
 				if !timer.Stop() {
 					<-timer.C
 				}
-				emit(i, false, true, time.Time{})
-				return nil
+				continue
 			case <-timer.C:
 			}
 			continue
 		}
 
-		emit(i, true, false, time.Time{})
-
-		if _, err := fmt.Fprintln(writer, action.command); err != nil {
-			return fmt.Errorf("send replay command from line %d: %w", action.line, err)
+		if _, err := fmt.Fprintln(writer, item.action.command); err != nil {
+			return fmt.Errorf("send replay command from line %d: %w", item.action.line, err)
 		}
 	}
-
-	emit(len(actions), false, false, time.Time{})
-	return nil
 }

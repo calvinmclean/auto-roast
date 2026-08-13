@@ -117,7 +117,10 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	logAccordion, logEntry := createLogAccordion()
 	ui.logEntry = logEntry
 
-	var replayQueueItems []string
+	var replay *controller.Replay
+	var replayQueueItems []controller.ReplayQueuedAction
+	var replayQueue *widget.List
+	var replayButton *widget.Button
 	replayStatus := widget.NewLabel("Manual control")
 	replayStatus.Wrapping = fyne.TextWrapWord
 	waitCountdown := widget.NewLabel("")
@@ -161,17 +164,43 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			}
 		}()
 	}
-	replayQueue := widget.NewList(
+	replayQueue = widget.NewList(
 		func() int { return len(replayQueueItems) },
-		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func() fyne.CanvasObject {
+			label := widget.NewLabel("")
+			label.Truncation = fyne.TextTruncateEllipsis
+			removeButton := widget.NewButton("X", nil)
+			return container.NewBorder(nil, nil, nil, removeButton, label)
+		},
 		func(id widget.ListItemID, object fyne.CanvasObject) {
-			object.(*widget.Label).SetText(replayQueueItems[id])
+			item := replayQueueItems[id]
+			row := object.(*fyne.Container)
+			row.Objects[0].(*widget.Label).SetText(item.Text)
+			removeButton := row.Objects[1].(*widget.Button)
+			removeButton.Enable()
+			removeButton.OnTapped = func() {
+				if replay != nil && replay.RemoveQueued(item.ID) {
+					return
+				}
+
+				for i, queued := range replayQueueItems {
+					if queued.ID == item.ID {
+						replayQueueItems = append(replayQueueItems[:i], replayQueueItems[i+1:]...)
+						replayQueue.Refresh()
+						if len(replayQueueItems) == 0 {
+							replayStatus.SetText("No planned actions remaining.")
+							replayButton.Disable()
+						}
+						return
+					}
+				}
+			}
+			row.Refresh()
 		},
 	)
-	var replayActions []controller.ReplayAction
 	var cancelReplay context.CancelFunc
 	var startReplay func()
-	replayButton := widget.NewButton("Start Planned Roast", func() {
+	replayButton = widget.NewButton("Start Planned Roast", func() {
 		if cancelReplay != nil {
 			cancelReplay()
 			return
@@ -259,20 +288,48 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	configWindow.OnSubmit = func() {
 		defer window.Show()
 
-		replayActions = nil
+		replay = nil
 		replayQueueItems = nil
 		startReplay = nil
 		replayButton.Disable()
 		if cfg.RoastFile != "" {
 			var err error
-			replayActions, err = controller.LoadReplay(cfg.RoastFile)
+			actions, err := controller.LoadReplay(cfg.RoastFile)
 			if err != nil {
 				showError(application, window, fmt.Errorf("error loading replay file: %w", err))
 				return
 			}
-			for _, action := range replayActions {
-				replayQueueItems = append(replayQueueItems, action.String())
-			}
+			replay = controller.NewReplay(actions, func(state controller.ReplayState) {
+				fyne.Do(func() {
+					replayQueueItems = state.Queued
+					replayQueue.Refresh()
+					updateWaitCountdown(state.WaitUntil)
+					switch {
+					case state.Running && state.Current != "":
+						replayStatus.SetText("Current: " + state.Current)
+						replayButton.Enable()
+					case state.Running:
+						replayStatus.SetText("Planned roast starting")
+						replayButton.Enable()
+					case state.Cancelled:
+						cancelReplay = nil
+						replayStatus.SetText("Planned roast cancelled. Manual control enabled.")
+						replayButton.Disable()
+					case !state.Started && len(state.Queued) > 0:
+						replayStatus.SetText("Planned roast ready. Manual control remains available.")
+						replayButton.SetText("Start Planned Roast")
+						replayButton.Enable()
+					case !state.Started:
+						replayStatus.SetText("No planned actions remaining.")
+						replayButton.Disable()
+					default:
+						cancelReplay = nil
+						replayStatus.SetText("Planned roast complete. Manual control enabled.")
+						replayButton.Disable()
+					}
+				})
+			})
+			replayQueueItems = replay.State().Queued
 			replayQueue.Refresh()
 			replayStatus.SetText("Planned roast ready. Manual control remains available.")
 			replayButton.SetText("Start Planned Roast")
@@ -322,35 +379,13 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			}
 		}()
 
-		if len(replayActions) > 0 {
+		if replay != nil {
 			startReplay = func() {
 				replayCtx, replayCancel := context.WithCancel(controllerCtx)
 				cancelReplay = replayCancel
 				replayButton.SetText("Cancel Planned Roast")
 				go func() {
-					err := controller.RunReplay(replayCtx, replayActions, commandWriter, func(state controller.ReplayState) {
-						fyne.Do(func() {
-							replayQueueItems = state.Queued
-							replayQueue.Refresh()
-							updateWaitCountdown(state.WaitUntil)
-							switch {
-							case state.Running && state.Current != "":
-								replayStatus.SetText("Current: " + state.Current)
-								replayButton.Enable()
-							case state.Running:
-								replayStatus.SetText("Planned roast starting")
-								replayButton.Enable()
-							case state.Cancelled:
-								cancelReplay = nil
-								replayStatus.SetText("Planned roast cancelled. Manual control enabled.")
-								replayButton.Disable()
-							default:
-								cancelReplay = nil
-								replayStatus.SetText("Planned roast complete. Manual control enabled.")
-								replayButton.Disable()
-							}
-						})
-					})
+					err := replay.Run(replayCtx, commandWriter)
 					if err != nil {
 						fyne.Do(func() {
 							cancelReplay = nil

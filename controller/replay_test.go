@@ -87,6 +87,56 @@ func TestRunReplayWritesCommandsInOrder(t *testing.T) {
 	}
 }
 
+func TestReplayRemoveQueuedBeforeStart(t *testing.T) {
+	var output bytes.Buffer
+	replay := NewReplay([]ReplayAction{
+		{line: 1, command: "S"},
+		{line: 2, command: "F5"},
+	}, func(ReplayState) {})
+
+	if !replay.RemoveQueued(0) {
+		t.Fatal("RemoveQueued() = false, want true")
+	}
+	if err := replay.Run(context.Background(), &output); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if got, want := output.String(), "F5\n"; got != want {
+		t.Errorf("output = %q, want %q", got, want)
+	}
+}
+
+func TestReplayRemoveQueuedDuringWait(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var output bytes.Buffer
+	states := make(chan ReplayState, 4)
+	replay := NewReplay([]ReplayAction{
+		{line: 1, wait: time.Hour},
+		{line: 2, command: "F5"},
+	}, func(state ReplayState) { states <- state })
+	done := make(chan error, 1)
+
+	go func() { done <- replay.Run(ctx, &output) }()
+	<-states // initial queue
+	active := <-states
+	if active.Current != "WAIT 1h0m0s" {
+		t.Fatalf("current = %q, want active wait", active.Current)
+	}
+	if replay.RemoveQueued(0) {
+		t.Error("RemoveQueued() removed the active wait, want false")
+	}
+	if !replay.RemoveQueued(1) {
+		t.Fatal("RemoveQueued() = false, want true")
+	}
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if got := output.String(); got != "" {
+		t.Errorf("output = %q, want removed command not dispatched", got)
+	}
+}
+
 func TestRunReplayCancellationStopsWait(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
