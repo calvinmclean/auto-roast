@@ -106,16 +106,35 @@ func (r *Replay) AddQueued(input string) error {
 
 func (r *Replay) MoveQueued(id, offset int) bool {
 	r.mu.Lock()
+	index := -1
+	for i, item := range r.queued {
+		if item.id == id {
+			index = i
+			break
+		}
+	}
+	r.mu.Unlock()
+	return index >= 0 && r.MoveQueuedTo(id, index+offset)
+}
+
+func (r *Replay) MoveQueuedTo(id, to int) bool {
+	r.mu.Lock()
 	for i, item := range r.queued {
 		if item.id != id {
 			continue
 		}
-		to := i + offset
 		if to < 0 || to >= len(r.queued) {
 			r.mu.Unlock()
 			return false
 		}
-		r.queued[i], r.queued[to] = r.queued[to], r.queued[i]
+		if i == to {
+			r.mu.Unlock()
+			return false
+		}
+		r.queued = append(r.queued[:i], r.queued[i+1:]...)
+		r.queued = append(r.queued, replayItem{})
+		copy(r.queued[to+1:], r.queued[to:])
+		r.queued[to] = item
 		state := r.stateLocked()
 		r.mu.Unlock()
 		r.notify(state)

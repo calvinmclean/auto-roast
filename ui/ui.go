@@ -169,39 +169,22 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		func() fyne.CanvasObject {
 			label := widget.NewLabel("")
 			label.Truncation = fyne.TextTruncateEllipsis
-			moveUpButton := widget.NewButton("^", nil)
-			moveDownButton := widget.NewButton("v", nil)
+			handle := newDragHandle(func(itemID, _, to int) {
+				if replay != nil {
+					replay.MoveQueuedTo(itemID, to)
+				}
+			})
 			removeButton := widget.NewButton("X", nil)
-			return container.NewBorder(nil, nil, container.NewHBox(moveUpButton, moveDownButton, removeButton), nil, label)
+			return container.NewBorder(nil, nil, handle, removeButton, label)
 		},
 		func(id widget.ListItemID, object fyne.CanvasObject) {
 			item := replayQueueItems[id]
 			row := object.(*fyne.Container)
 			row.Objects[0].(*widget.Label).SetText(item.Text)
-			buttons := row.Objects[1].(*fyne.Container)
-			moveUpButton := buttons.Objects[0].(*widget.Button)
-			moveDownButton := buttons.Objects[1].(*widget.Button)
-			removeButton := buttons.Objects[2].(*widget.Button)
-			moveUpButton.OnTapped = func() {
-				if replay != nil {
-					replay.MoveQueued(item.ID, -1)
-				}
-			}
-			moveDownButton.OnTapped = func() {
-				if replay != nil {
-					replay.MoveQueued(item.ID, 1)
-				}
-			}
-			if id == 0 {
-				moveUpButton.Disable()
-			} else {
-				moveUpButton.Enable()
-			}
-			if id == len(replayQueueItems)-1 {
-				moveDownButton.Disable()
-			} else {
-				moveDownButton.Enable()
-			}
+			handle := row.Objects[1].(*dragHandle)
+			handle.itemID = item.ID
+			handle.index = id
+			removeButton := row.Objects[2].(*widget.Button)
 			removeButton.Enable()
 			removeButton.OnTapped = func() {
 				if replay != nil && replay.RemoveQueued(item.ID) {

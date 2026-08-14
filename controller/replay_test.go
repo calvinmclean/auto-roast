@@ -157,6 +157,30 @@ func TestReplayAddAndMoveQueued(t *testing.T) {
 	}
 }
 
+func TestReplayMoveQueuedTo(t *testing.T) {
+	replay := NewReplay([]ReplayAction{
+		{line: 1, command: "F5"},
+		{line: 2, command: "P5"},
+		{line: 3, command: "F6"},
+	}, func(ReplayState) {})
+	if !replay.MoveQueuedTo(0, 2) {
+		t.Fatal("MoveQueuedTo() = false, want true")
+	}
+	state := replay.State()
+	if got, want := state.Queued[0].Text, "P5"; got != want {
+		t.Errorf("first action = %q, want %q", got, want)
+	}
+	if got, want := state.Queued[1].Text, "F6"; got != want {
+		t.Errorf("second action = %q, want %q", got, want)
+	}
+	if got, want := state.Queued[2].Text, "F5"; got != want {
+		t.Errorf("third action = %q, want %q", got, want)
+	}
+	if replay.MoveQueuedTo(0, 3) {
+		t.Error("MoveQueuedTo() = true out of bounds, want false")
+	}
+}
+
 func TestRunReplayCancellationStopsWait(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
