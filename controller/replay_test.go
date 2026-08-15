@@ -16,8 +16,8 @@ func TestLoadReplay(t *testing.T) {
 		firstCommand string
 		firstWait    time.Duration
 	}{
-		{name: "classic-roast.txt", actions: 11, firstCommand: "S", firstWait: 45 * time.Second},
-		{name: "short-roast.txt", actions: 5, firstCommand: "S", firstWait: 15 * time.Second},
+		{name: "classic.roast", actions: 11, firstCommand: "S", firstWait: 45 * time.Second},
+		{name: "short.roast", actions: 5, firstCommand: "S", firstWait: 15 * time.Second},
 	}
 
 	for _, tt := range tests {
@@ -58,7 +58,7 @@ func TestParseReplayInvalidWait(t *testing.T) {
 }
 
 func TestLoadReplayInvalidWait(t *testing.T) {
-	_, err := LoadReplay(filepath.Join("testdata", "invalid-wait-roast.txt"))
+	_, err := LoadReplay(filepath.Join("testdata", "invalid-wait.roast"))
 	if err == nil || !strings.Contains(err.Error(), "line 3") {
 		t.Errorf("LoadReplay() error = %v, want line-numbered error", err)
 	}

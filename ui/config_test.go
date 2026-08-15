@@ -4,9 +4,9 @@ import "testing"
 
 func TestRoastFileDisplay(t *testing.T) {
 	for path, want := range map[string]string{
-		"":                                "No replay file selected",
-		"ROAST.txt":                       "ROAST.txt",
-		"/Users/test/Downloads/ROAST.txt": ".../Downloads/ROAST.txt",
+		"":                                  "No replay file selected",
+		"ROAST.roast":                       "ROAST.roast",
+		"/Users/test/Downloads/ROAST.roast": ".../Downloads/ROAST.roast",
 	} {
 		t.Run(path, func(t *testing.T) {
 			if got := roastFileDisplay(path); got != want {

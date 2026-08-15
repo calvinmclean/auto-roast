@@ -33,11 +33,11 @@ func TestConfigWindowPersistsRoastFile(t *testing.T) {
 	defer app.Quit()
 
 	configWindow := NewConfigWindow(app)
-	configWindow.saveConfigToPreferences(&controller.Config{RoastFile: "/tmp/roast.txt"})
+	configWindow.saveConfigToPreferences(&controller.Config{RoastFile: "/tmp/roast.roast"})
 
 	var cfg controller.Config
 	configWindow.loadConfigFromPreferences(&cfg)
-	if got, want := cfg.RoastFile, "/tmp/roast.txt"; got != want {
+	if got, want := cfg.RoastFile, "/tmp/roast.roast"; got != want {
 		t.Errorf("RoastFile = %q, want %q", got, want)
 	}
 }

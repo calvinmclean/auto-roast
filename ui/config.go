@@ -136,7 +136,7 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 
 	roastFileLabel := widget.NewLabel(roastFileDisplay(cfg.RoastFile))
 	selectRoastFile := widget.NewButton("Browse", func() {
-		path, err := nativeDialog.File().Title("Select roast replay file").Load()
+		path, err := nativeDialog.File().Filter("Roast files", "roast").Title("Select roast replay file").Load()
 		if errors.Is(err, nativeDialog.ErrCancelled) {
 			return
 		}
