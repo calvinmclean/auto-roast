@@ -53,14 +53,39 @@ type Replay struct {
 	cancelled bool
 	waitUntil time.Time
 	notify    func(ReplayState)
+	skip      chan struct{}
 }
 
 func NewReplay(actions []ReplayAction, notify func(ReplayState)) *Replay {
-	r := &Replay{notify: notify}
+	r := &Replay{
+		notify: notify,
+		skip:   make(chan struct{}, 1),
+	}
 	for id, action := range actions {
 		r.queued = append(r.queued, replayItem{id: id, action: action})
 	}
 	return r
+}
+
+func (r *Replay) Skip() bool {
+	r.mu.Lock()
+	if !r.running || r.current == nil || r.current.action.wait == 0 {
+		r.mu.Unlock()
+		return false
+	}
+	r.mu.Unlock()
+	select {
+	case r.skip <- struct{}{}:
+	default:
+	}
+	return true
+}
+
+func (r *Replay) clearSkip() {
+	select {
+	case <-r.skip:
+	default:
+	}
 }
 
 func (r *Replay) RemoveQueued(id int) bool {
@@ -249,12 +274,18 @@ func (r *Replay) Run(ctx context.Context, writer io.Writer) error {
 		}
 		waitUntil := r.waitUntil
 		r.mu.Unlock()
+		r.clearSkip()
 		r.emit()
 
 		if item.action.wait > 0 {
 			timer := time.NewTimer(time.Until(waitUntil))
 			select {
 			case <-ctx.Done():
+				if !timer.Stop() {
+					<-timer.C
+				}
+				continue
+			case <-r.skip:
 				if !timer.Stop() {
 					<-timer.C
 				}

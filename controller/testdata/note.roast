@@ -1,0 +1,6 @@
+# Example replay profile with a NOTE step.
+S
+PREHEAT
+NOTE first crack approaching
+WAIT 1s
+ROASTING

@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -52,11 +53,20 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	cw := &controllerWrapper{}
 
 	var stateButton *widget.Button
+	refreshStateButton := func() {
+		if currentState == stateDone {
+			stateButton.SetText("Done")
+			stateButton.Disable()
+			return
+		}
+		stateButton.SetText(currentState.next().String())
+		stateButton.Enable()
+	}
 	advanceState := func() {
 		currentState = currentState.next()
 
 		lastEventTimer.Set(time.Now())
-		stateButton.SetText(currentState.next().String())
+		refreshStateButton()
 
 		switch currentState {
 		case stateRoasting:
@@ -72,11 +82,8 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			overallTimer.Set(time.Now())
 			close(waitForStart)
 		case stateDone:
-			stateButton.Disable()
 			overallTimer.Stop()
 			lastEventTimer.Stop()
-		default:
-			stateButton.Enable()
 		}
 	}
 	stateButton = widget.NewButton(currentState.next().String(), func() {
@@ -86,8 +93,12 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	var setFanSlider, setPowerSlider func(float64)
 	applyCommand := func(command string) {
 		fyne.Do(func() {
-			if target := stateForCommand(command); target != stateNone && currentState.next() == target {
-				advanceState()
+			if target := stateForCommand(command); target != stateNone {
+				if currentState.next() == target {
+					advanceState()
+				} else {
+					refreshStateButton()
+				}
 			}
 			if setting, value, ok := settingValue(command); ok {
 				lastEventTimer.Set(time.Now())
@@ -121,6 +132,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	var replayQueueItems []controller.ReplayQueuedAction
 	var replayQueue *widget.List
 	var replayButton *widget.Button
+	var skipReplayButton *widget.Button
 	replayStatus := widget.NewLabel("Manual control")
 	replayStatus.Wrapping = fyne.TextWrapWord
 	waitCountdown := widget.NewLabel("")
@@ -174,7 +186,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 					replay.MoveQueuedTo(itemID, to)
 				}
 			})
-			removeButton := widget.NewButton("X", nil)
+			removeButton := widget.NewButtonWithIcon("", theme.DeleteIcon(), nil)
 			return container.NewBorder(nil, nil, handle, removeButton, label)
 		},
 		func(id widget.ListItemID, object fyne.CanvasObject) {
@@ -232,6 +244,12 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		}
 	})
 	replayButton.Disable()
+	skipReplayButton = widget.NewButtonWithIcon("", theme.MediaSkipNextIcon(), func() {
+		if replay != nil {
+			replay.Skip()
+		}
+	})
+	skipReplayButton.Hide()
 
 	clickButton := widget.NewButton("Click", func() {
 		cw.Click()
@@ -278,7 +296,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		container.NewVBox(
 			widget.NewLabel("Planned Roast"),
 			container.NewBorder(nil, nil, nil, waitCountdown, replayStatus),
-			replayButton,
+			container.NewHBox(replayButton, skipReplayButton),
 			container.NewBorder(nil, nil, nil, addReplayButton, addReplayEntry),
 		),
 		nil,
@@ -330,25 +348,42 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 					switch {
 					case state.Running && state.Current != "":
 						replayStatus.SetText("Current: " + state.Current)
+						replayButton.SetText("Cancel Planned Roast")
 						replayButton.Enable()
+						if strings.HasPrefix(state.Current, "WAIT") {
+							skipReplayButton.Show()
+						} else {
+							skipReplayButton.Hide()
+						}
 					case state.Running:
 						replayStatus.SetText("Planned roast starting")
+						replayButton.SetText("Cancel Planned Roast")
 						replayButton.Enable()
+						skipReplayButton.Hide()
 					case state.Cancelled:
 						cancelReplay = nil
 						replayStatus.SetText("Planned roast cancelled. Manual control enabled.")
+						replayButton.SetText("Start Planned Roast")
 						replayButton.Disable()
+						skipReplayButton.Hide()
+						refreshStateButton()
 					case !state.Started && len(state.Queued) > 0:
 						replayStatus.SetText("Planned roast ready. Manual control remains available.")
 						replayButton.SetText("Start Planned Roast")
 						replayButton.Enable()
+						skipReplayButton.Hide()
 					case !state.Started:
 						replayStatus.SetText("No planned actions remaining.")
+						replayButton.SetText("Start Planned Roast")
 						replayButton.Disable()
+						skipReplayButton.Hide()
 					default:
 						cancelReplay = nil
 						replayStatus.SetText("Planned roast complete. Manual control enabled.")
+						replayButton.SetText("Start Planned Roast")
 						replayButton.Disable()
+						skipReplayButton.Hide()
+						refreshStateButton()
 					}
 				})
 			})

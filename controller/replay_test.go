@@ -57,6 +57,23 @@ func TestParseReplayInvalidWait(t *testing.T) {
 	}
 }
 
+func TestLoadReplayWithNote(t *testing.T) {
+	actions, err := LoadReplay(filepath.Join("testdata", "note.roast"))
+	if err != nil {
+		t.Fatalf("LoadReplay() error = %v", err)
+	}
+	var found bool
+	for _, action := range actions {
+		if action.command == "NOTE first crack approaching" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("actions = %v, want NOTE command", actions)
+	}
+}
+
 func TestLoadReplayInvalidWait(t *testing.T) {
 	_, err := LoadReplay(filepath.Join("testdata", "invalid-wait.roast"))
 	if err == nil || !strings.Contains(err.Error(), "line 3") {
@@ -178,6 +195,58 @@ func TestReplayMoveQueuedTo(t *testing.T) {
 	}
 	if replay.MoveQueuedTo(0, 3) {
 		t.Error("MoveQueuedTo() = true out of bounds, want false")
+	}
+}
+
+func TestReplaySkipWait(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var output bytes.Buffer
+	states := make(chan ReplayState, 4)
+	replay := NewReplay([]ReplayAction{
+		{line: 1, wait: time.Hour},
+		{line: 2, command: "F5"},
+	}, func(state ReplayState) { states <- state })
+	done := make(chan error, 1)
+
+	go func() { done <- replay.Run(ctx, &output) }()
+	<-states // initial queue
+	<-states // active wait
+	if !replay.Skip() {
+		t.Fatal("Skip() = false, want true")
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if got := output.String(); got != "F5\n" {
+		t.Errorf("output = %q, want %q", got, "F5\n")
+	}
+}
+
+func TestReplaySkipCommandReturnsFalse(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var output bytes.Buffer
+	states := make(chan ReplayState, 4)
+	replay := NewReplay([]ReplayAction{
+		{line: 1, command: "S"},
+	}, func(state ReplayState) { states <- state })
+	done := make(chan error, 1)
+
+	go func() { done <- replay.Run(ctx, &output) }()
+	<-states // initial queue
+	<-states // active command S
+	if replay.Skip() {
+		t.Error("Skip() = true, want false for command actions")
+	}
+	cancel()
+	<-done
+}
+
+func TestReplaySkipWhenNotRunning(t *testing.T) {
+	replay := NewReplay([]ReplayAction{{line: 1, wait: time.Hour}}, func(ReplayState) {})
+	if replay.Skip() {
+		t.Error("Skip() = true, want false when not running")
 	}
 }
 
