@@ -318,15 +318,10 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		nil,
 		replayQueue,
 	)
-	roastSplit := container.NewHSplit(manualControls, replayControls)
+	leftPane := container.NewBorder(manualControls, nil, nil, nil, logAccordion)
+	roastSplit := container.NewHSplit(leftPane, replayControls)
 	roastSplit.SetOffset(0.45)
-	contentContainer := container.NewBorder(
-		nil,
-		logAccordion,
-		nil,
-		nil,
-		roastSplit,
-	)
+	contentContainer := roastSplit
 
 	go func() {
 		<-ctx.Done()
@@ -565,7 +560,7 @@ func createSlider(labelText string, onSet func(float64), onFix func(int), setFoc
 func createLogAccordion() (*widget.Accordion, *widget.Entry) {
 	logScroll := widget.NewMultiLineEntry()
 	logScroll.Wrapping = fyne.TextWrapWord
-	logScroll.SetMinRowsVisible(10)
+	logScroll.SetMinRowsVisible(3)
 
 	// disable editing by undoing changes. this allows it to not have changed colors from Disable
 	logScroll.OnChanged = func(_ string) {
