@@ -16,11 +16,15 @@ type ReplayAction struct {
 	line    int
 	command string
 	wait    time.Duration
+	alert   string
 }
 
 func (a ReplayAction) String() string {
 	if a.wait > 0 {
 		return fmt.Sprintf("WAIT %s", a.wait)
+	}
+	if a.alert != "" {
+		return fmt.Sprintf("ALERT %s", a.alert)
 	}
 	return a.command
 }
@@ -53,13 +57,15 @@ type Replay struct {
 	cancelled bool
 	waitUntil time.Time
 	notify    func(ReplayState)
+	onAlert   func(message string)
 	skip      chan struct{}
 }
 
-func NewReplay(actions []ReplayAction, notify func(ReplayState)) *Replay {
+func NewReplay(actions []ReplayAction, notify func(ReplayState), onAlert func(message string)) *Replay {
 	r := &Replay{
-		notify: notify,
-		skip:   make(chan struct{}, 1),
+		notify:  notify,
+		onAlert: onAlert,
+		skip:    make(chan struct{}, 1),
 	}
 	for id, action := range actions {
 		r.queued = append(r.queued, replayItem{id: id, action: action})
@@ -212,6 +218,9 @@ func ParseReplay(r io.Reader) ([]ReplayAction, error) {
 		}
 
 		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
 		if strings.EqualFold(fields[0], "WAIT") {
 			if len(fields) != 2 {
 				return nil, fmt.Errorf("line %d: WAIT requires exactly one duration", lineNumber)
@@ -224,6 +233,15 @@ func ParseReplay(r io.Reader) ([]ReplayAction, error) {
 			continue
 		}
 
+		if strings.EqualFold(fields[0], "ALERT") {
+			message := strings.TrimSpace(strings.TrimPrefix(line, fields[0]))
+			if message == "" {
+				return nil, fmt.Errorf("line %d: ALERT requires a message", lineNumber)
+			}
+			actions = append(actions, ReplayAction{line: lineNumber, alert: message})
+			continue
+		}
+
 		actions = append(actions, ReplayAction{line: lineNumber, command: line})
 	}
 	if err := scanner.Err(); err != nil {
@@ -233,7 +251,7 @@ func ParseReplay(r io.Reader) ([]ReplayAction, error) {
 }
 
 func RunReplay(ctx context.Context, actions []ReplayAction, writer io.Writer, notify func(ReplayState)) error {
-	return NewReplay(actions, notify).Run(ctx, writer)
+	return NewReplay(actions, notify, nil).Run(ctx, writer)
 }
 
 func (r *Replay) Run(ctx context.Context, writer io.Writer) error {
@@ -291,6 +309,13 @@ func (r *Replay) Run(ctx context.Context, writer io.Writer) error {
 				}
 				continue
 			case <-timer.C:
+			}
+			continue
+		}
+
+		if item.action.alert != "" {
+			if r.onAlert != nil {
+				r.onAlert(item.action.alert)
 			}
 			continue
 		}

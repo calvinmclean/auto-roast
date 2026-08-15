@@ -14,6 +14,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -30,6 +31,19 @@ type RoasterUI struct {
 
 func NewRoasterUI() *RoasterUI {
 	return &RoasterUI{}
+}
+
+func alertHandler(window fyne.Window) func(message string) {
+	return func(message string) {
+		done := make(chan struct{})
+		fyne.Do(func() {
+			d := dialog.NewInformation("Roast Alert", message, window)
+			d.SetOnClosed(func() { close(done) })
+			d.Resize(fyne.NewSize(500, 250))
+			d.Show()
+		})
+		<-done
+	}
 }
 
 func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool) {
@@ -386,7 +400,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 						refreshStateButton()
 					}
 				})
-			})
+			}, alertHandler(window))
 			replayQueueItems = replay.State().Queued
 			replayQueue.Refresh()
 			replayStatus.SetText("Planned roast ready. Manual control remains available.")

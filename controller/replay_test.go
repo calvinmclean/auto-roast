@@ -74,6 +74,22 @@ func TestLoadReplayWithNote(t *testing.T) {
 	}
 }
 
+func TestLoadReplayWithAlert(t *testing.T) {
+	actions, err := LoadReplay(filepath.Join("testdata", "alert.roast"))
+	if err != nil {
+		t.Fatalf("LoadReplay() error = %v", err)
+	}
+	var found int
+	for _, action := range actions {
+		if action.alert != "" {
+			found++
+		}
+	}
+	if found != 2 {
+		t.Errorf("alert actions = %d, want 2", found)
+	}
+}
+
 func TestLoadReplayInvalidWait(t *testing.T) {
 	_, err := LoadReplay(filepath.Join("testdata", "invalid-wait.roast"))
 	if err == nil || !strings.Contains(err.Error(), "line 3") {
@@ -109,7 +125,7 @@ func TestReplayRemoveQueuedBeforeStart(t *testing.T) {
 	replay := NewReplay([]ReplayAction{
 		{line: 1, command: "S"},
 		{line: 2, command: "F5"},
-	}, func(ReplayState) {})
+	}, func(ReplayState) {}, nil)
 
 	if !replay.RemoveQueued(0) {
 		t.Fatal("RemoveQueued() = false, want true")
@@ -130,7 +146,7 @@ func TestReplayRemoveQueuedDuringWait(t *testing.T) {
 	replay := NewReplay([]ReplayAction{
 		{line: 1, wait: time.Hour},
 		{line: 2, command: "F5"},
-	}, func(state ReplayState) { states <- state })
+	}, func(state ReplayState) { states <- state }, nil)
 	done := make(chan error, 1)
 
 	go func() { done <- replay.Run(ctx, &output) }()
@@ -155,7 +171,7 @@ func TestReplayRemoveQueuedDuringWait(t *testing.T) {
 }
 
 func TestReplayAddAndMoveQueued(t *testing.T) {
-	replay := NewReplay([]ReplayAction{{line: 1, command: "F5"}}, func(ReplayState) {})
+	replay := NewReplay([]ReplayAction{{line: 1, command: "F5"}}, func(ReplayState) {}, nil)
 	if err := replay.AddQueued("WAIT 30s"); err != nil {
 		t.Fatalf("AddQueued() error = %v", err)
 	}
@@ -179,7 +195,7 @@ func TestReplayMoveQueuedTo(t *testing.T) {
 		{line: 1, command: "F5"},
 		{line: 2, command: "P5"},
 		{line: 3, command: "F6"},
-	}, func(ReplayState) {})
+	}, func(ReplayState) {}, nil)
 	if !replay.MoveQueuedTo(0, 2) {
 		t.Fatal("MoveQueuedTo() = false, want true")
 	}
@@ -206,7 +222,7 @@ func TestReplaySkipWait(t *testing.T) {
 	replay := NewReplay([]ReplayAction{
 		{line: 1, wait: time.Hour},
 		{line: 2, command: "F5"},
-	}, func(state ReplayState) { states <- state })
+	}, func(state ReplayState) { states <- state }, nil)
 	done := make(chan error, 1)
 
 	go func() { done <- replay.Run(ctx, &output) }()
@@ -230,7 +246,7 @@ func TestReplaySkipCommandReturnsFalse(t *testing.T) {
 	states := make(chan ReplayState, 4)
 	replay := NewReplay([]ReplayAction{
 		{line: 1, command: "S"},
-	}, func(state ReplayState) { states <- state })
+	}, func(state ReplayState) { states <- state }, nil)
 	done := make(chan error, 1)
 
 	go func() { done <- replay.Run(ctx, &output) }()
@@ -244,7 +260,7 @@ func TestReplaySkipCommandReturnsFalse(t *testing.T) {
 }
 
 func TestReplaySkipWhenNotRunning(t *testing.T) {
-	replay := NewReplay([]ReplayAction{{line: 1, wait: time.Hour}}, func(ReplayState) {})
+	replay := NewReplay([]ReplayAction{{line: 1, wait: time.Hour}}, func(ReplayState) {}, nil)
 	if replay.Skip() {
 		t.Error("Skip() = true, want false when not running")
 	}
@@ -278,5 +294,79 @@ func TestRunReplayCancellationStopsWait(t *testing.T) {
 	}
 	if !final.WaitUntil.IsZero() {
 		t.Errorf("WaitUntil = %v after cancellation, want zero", final.WaitUntil)
+	}
+}
+
+func TestParseReplayAlert(t *testing.T) {
+	actions, err := ParseReplay(strings.NewReader("ALERT load beans"))
+	if err != nil {
+		t.Fatalf("ParseReplay() error = %v", err)
+	}
+	if len(actions) != 1 {
+		t.Fatalf("len(actions) = %d, want 1", len(actions))
+	}
+	if got, want := actions[0].alert, "load beans"; got != want {
+		t.Errorf("alert = %q, want %q", got, want)
+	}
+	if got, want := actions[0].String(), "ALERT load beans"; got != want {
+		t.Errorf("String() = %q, want %q", got, want)
+	}
+}
+
+func TestParseReplayAlertRequiresMessage(t *testing.T) {
+	_, err := ParseReplay(strings.NewReader("ALERT"))
+	if err == nil || !strings.Contains(err.Error(), "line 1") {
+		t.Errorf("ParseReplay() error = %v, want line-numbered error", err)
+	}
+}
+
+func TestReplayAlertBlocksUntilDismissed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var output bytes.Buffer
+	states := make(chan ReplayState, 4)
+	dismissed := make(chan string, 1)
+	dismiss := make(chan struct{})
+
+	replay := NewReplay([]ReplayAction{
+		{line: 1, alert: "load beans"},
+		{line: 2, command: "F5"},
+	}, func(state ReplayState) { states <- state }, func(message string) {
+		dismissed <- message
+		<-dismiss
+	})
+
+	done := make(chan error, 1)
+	go func() { done <- replay.Run(ctx, &output) }()
+
+	<-states // initial queue
+	active := <-states
+	if active.Current != "ALERT load beans" {
+		t.Fatalf("current = %q, want alert state", active.Current)
+	}
+
+	msg := <-dismissed
+	if msg != "load beans" {
+		t.Errorf("alert message = %q, want %q", msg, "load beans")
+	}
+
+	select {
+	case <-done:
+		t.Fatal("Run() returned before alert was dismissed")
+	default:
+	}
+
+	if output.String() != "" {
+		t.Errorf("output = %q before dismiss, want empty", output.String())
+	}
+
+	close(dismiss)
+	if err := <-done; err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	if got, want := output.String(), "F5\n"; got != want {
+		t.Errorf("output = %q, want %q", got, want)
 	}
 }
