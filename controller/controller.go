@@ -24,8 +24,9 @@ var ErrNoUSBSerial = errors.New("no USB serial ports found")
 
 type Controller struct {
 	twchartClient twchartClient
-	port          serial.Port
+	port          io.ReadWriteCloser
 	config        Config
+	done          bool
 }
 
 type Config struct {
@@ -36,6 +37,7 @@ type Config struct {
 	ProbesInput         string
 	InitialFanSetting   int
 	InitialPowerSetting int
+	RoastFile           string
 }
 
 func GetSerialPorts() ([]string, error) {
@@ -120,8 +122,10 @@ func New(cfg Config) (Controller, error) {
 		BaudRate: baudRate,
 	}
 
-	var port serial.Port
-	if cfg.SerialPort != SerialPortNone {
+	var port io.ReadWriteCloser
+	if cfg.SerialPort == SerialPortNone {
+		port = &mockPort{}
+	} else {
 		var err error
 		port, err = serial.Open(cfg.SerialPort, mode)
 		if err != nil {
@@ -177,7 +181,7 @@ func (c Controller) passthroughCommand(in []byte) (string, error) {
 	return strings.TrimSpace(resp), nil
 }
 
-func (c Controller) Run(ctx context.Context, reader io.Reader, writer io.Writer) error {
+func (c *Controller) Run(ctx context.Context, reader io.Reader, writer io.Writer) error {
 	if c.config.SessionName == "" {
 		return errors.New("missing SessionName")
 	}
@@ -230,15 +234,17 @@ func (c Controller) Run(ctx context.Context, reader io.Reader, writer io.Writer)
 			continue
 		}
 
-		switch line[0] {
-		case 'F', 'P':
-			err = c.twchartClient.AddEvent(ctx, line, time.Now())
-		case 'S':
-			err = c.twchartClient.SetStartTime(ctx, time.Now())
-		}
-		if err != nil {
-			fmt.Fprintf(writer, "Error: %v\n", err)
-			continue
+		if !c.done {
+			switch line[0] {
+			case 'F', 'P':
+				err = c.twchartClient.AddEvent(ctx, line, time.Now())
+			case 'S':
+				err = c.twchartClient.SetStartTime(ctx, time.Now())
+			}
+			if err != nil {
+				fmt.Fprintf(writer, "Error: %v\n", err)
+				continue
+			}
 		}
 
 		resp, err := c.passthroughCommand([]byte(line))
@@ -253,7 +259,7 @@ func (c Controller) Run(ctx context.Context, reader io.Reader, writer io.Writer)
 
 // handleExternalCommands is responsible for commands that do not get sent to the firmware controller.
 // It returns 'true' if a command is matched.
-func (c Controller) handleExternalCommands(ctx context.Context, line string) (bool, error) {
+func (c *Controller) handleExternalCommands(ctx context.Context, line string) (bool, error) {
 	switch line {
 	case "PH", "PREHEAT":
 		// TODO: should start if not already started
@@ -265,6 +271,7 @@ func (c Controller) handleExternalCommands(ctx context.Context, line string) (bo
 	case "COOL":
 		return true, c.twchartClient.AddStage(ctx, "Cooling", time.Now())
 	case "DONE":
+		c.done = true
 		return true, c.twchartClient.Done(ctx)
 	default:
 		if strings.HasPrefix(line, "NOTE") {

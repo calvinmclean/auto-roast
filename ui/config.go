@@ -3,14 +3,16 @@ package ui
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/dialog"
+	fyneDialog "fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/calvinmclean/autoroast/controller"
+	nativeDialog "github.com/sqweek/dialog"
 )
 
 type ConfigWindow struct {
@@ -33,6 +35,7 @@ func (cw *ConfigWindow) loadConfigFromPreferences(cfg *controller.Config) {
 	cfg.ProbesInput = prefs.StringWithFallback("probesInput", "1=Ambient,2=Beans")
 	cfg.InitialFanSetting = prefs.IntWithFallback("initialFanSetting", 5)
 	cfg.InitialPowerSetting = prefs.IntWithFallback("initialPowerSetting", 5)
+	cfg.RoastFile = prefs.StringWithFallback("roastFile", "")
 }
 
 func (cw *ConfigWindow) saveConfigToPreferences(cfg *controller.Config) {
@@ -44,6 +47,7 @@ func (cw *ConfigWindow) saveConfigToPreferences(cfg *controller.Config) {
 	prefs.SetString("probesInput", cfg.ProbesInput)
 	prefs.SetInt("initialFanSetting", cfg.InitialFanSetting)
 	prefs.SetInt("initialPowerSetting", cfg.InitialPowerSetting)
+	prefs.SetString("roastFile", cfg.RoastFile)
 }
 
 func (cw *ConfigWindow) Show(cfg *controller.Config) {
@@ -130,6 +134,25 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	initSettingsEntries := container.NewHBox(fanEntry, powerEntry)
 	initSettingsEntries.Resize(fyne.NewSize(120, initSettingsEntries.MinSize().Height))
 
+	roastFileLabel := widget.NewLabel(roastFileDisplay(cfg.RoastFile))
+	selectRoastFile := widget.NewButton("Browse", func() {
+		path, err := nativeDialog.File().Filter("Roast files", "roast").Title("Select roast replay file").Load()
+		if errors.Is(err, nativeDialog.ErrCancelled) {
+			return
+		}
+		if err != nil {
+			showError(cw.app, window, fmt.Errorf("select replay file: %w", err))
+			return
+		}
+
+		cfg.RoastFile = path
+		roastFileLabel.SetText(roastFileDisplay(cfg.RoastFile))
+	})
+	clearRoastFile := widget.NewButton("Clear", func() {
+		cfg.RoastFile = ""
+		roastFileLabel.SetText(roastFileDisplay(cfg.RoastFile))
+	})
+
 	// Add listeners to field changes
 	sessionEntry.OnChanged = func(_ string) { validateForm() }
 	probesEntry.OnChanged = func(_ string) { validateForm() }
@@ -165,6 +188,10 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 				widget.NewLabel("Initial Fan/Power:"),
 				container.NewWithoutLayout(initSettingsEntries),
 			),
+			container.NewGridWithColumns(2,
+				widget.NewLabel("Replay File:"),
+				container.NewBorder(nil, nil, selectRoastFile, clearRoastFile, roastFileLabel),
+			),
 		)),
 		container.NewHBox(
 			widget.NewButton("Cancel", func() {
@@ -178,8 +205,21 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	window.SetContent(form)
 }
 
+func roastFileDisplay(path string) string {
+	if path == "" {
+		return "No replay file selected"
+	}
+
+	file := filepath.Base(path)
+	parent := filepath.Base(filepath.Dir(path))
+	if parent == "." || parent == string(filepath.Separator) {
+		return file
+	}
+	return filepath.Join("...", parent, file)
+}
+
 func showError(app fyne.App, window fyne.Window, err error) {
-	d := dialog.NewError(err, window)
+	d := fyneDialog.NewError(err, window)
 	d.SetOnClosed(func() {
 		app.Quit()
 	})

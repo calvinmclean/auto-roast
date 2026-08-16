@@ -3,51 +3,54 @@ package ui
 import (
 	"fmt"
 	"io"
-	"time"
 )
 
 type controllerWrapper struct {
-	writer         io.Writer
-	lastEventTimer *timer
+	writer io.Writer
+}
+
+func (c *controllerWrapper) write(format string, args ...any) {
+	if c.writer == nil {
+		return
+	}
+	fmt.Fprintf(c.writer, format, args...)
 }
 
 func (c *controllerWrapper) Note(note string) {
-	fmt.Fprintf(c.writer, "NOTE %s\n", note)
+	c.write("NOTE %s\n", note)
 }
 
 func (c *controllerWrapper) Click() {
-	fmt.Fprint(c.writer, "C\n")
+	c.write("C\n")
 }
 
 func (c *controllerWrapper) Debug() {
-	fmt.Fprint(c.writer, "D\n")
+	c.write("D\n")
 }
 
 func (c *controllerWrapper) IncreaseTime() {
-	fmt.Fprint(c.writer, "T\n")
+	c.write("T\n")
 }
 
 func (c *controllerWrapper) SetFan(value float64) {
-	c.lastEventTimer.Set(time.Now())
-	fmt.Fprintf(c.writer, "F%.0f\n", value)
+	c.write("F%.0f\n", value)
 }
 
 func (c *controllerWrapper) FixFan(value int) {
-	fmt.Fprintf(c.writer, "f%d\n", value)
+	c.write("f%d\n", value)
 }
 
 func (c *controllerWrapper) SetPower(value float64) {
-	c.lastEventTimer.Set(time.Now())
-	fmt.Fprintf(c.writer, "P%.0f\n", value)
+	c.write("P%.0f\n", value)
 }
 
 func (c *controllerWrapper) FixPower(value int) {
-	fmt.Fprintf(c.writer, "p%d\n", value)
+	c.write("p%d\n", value)
 }
 
 func (c *controllerWrapper) RunStateCommand(s state) {
 	stateCommand := s.command()
 	if stateCommand != "" {
-		fmt.Fprintf(c.writer, "%s\n", stateCommand)
+		c.write("%s\n", stateCommand)
 	}
 }

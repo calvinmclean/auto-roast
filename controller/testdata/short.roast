@@ -1,0 +1,6 @@
+# Short profile used for testing a compact command sequence.
+S
+WAIT 15s
+F5
+WAIT 1m
+P4

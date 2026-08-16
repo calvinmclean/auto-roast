@@ -1,0 +1,9 @@
+S
+WAIT 5s
+ALERT load the beans
+F5
+P5
+WAIT 10s
+ALERT open the chaff collector
+F6
+DONE

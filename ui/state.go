@@ -1,5 +1,10 @@
 package ui
 
+import (
+	"strconv"
+	"strings"
+)
+
 type state int
 
 const (
@@ -51,4 +56,34 @@ func (s state) command() string {
 	default:
 		return ""
 	}
+}
+
+func stateForCommand(command string) state {
+	switch strings.ToUpper(strings.TrimSpace(command)) {
+	case "PREHEAT":
+		return statePreheat
+	case "ROAST", "ROASTING":
+		return stateRoasting
+	case "FC", "CRACK":
+		return stateFirstCrack
+	case "COOL":
+		return stateCooling
+	case "DONE":
+		return stateDone
+	default:
+		return stateNone
+	}
+}
+
+func settingValue(command string) (byte, float64, bool) {
+	command = strings.TrimSpace(command)
+	if len(command) < 2 || (command[0] != 'F' && command[0] != 'P') {
+		return 0, 0, false
+	}
+
+	value, err := strconv.ParseFloat(command[1:], 64)
+	if err != nil || value < 1 || value > 9 {
+		return 0, 0, false
+	}
+	return command[0], value, true
 }
