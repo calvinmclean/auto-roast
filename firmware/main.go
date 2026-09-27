@@ -1,7 +1,6 @@
 package main
 
 import (
-	"machine"
 	"math"
 	"time"
 
@@ -11,14 +10,14 @@ import (
 
 func main() {
 	stepperCfg := device.StepperConfig{
-		Pins:      [4]machine.Pin{machine.GP16, machine.GP17, machine.GP18, machine.GP19},
+		Pins:      stepperPins,
 		StepMode:  device.StepModeHalf,
 		StepDelay: 3000 * time.Microsecond,
 	}
 
 	servoCfg := device.ServoConfig{
-		PWM: machine.PWM3,
-		Pin: machine.GP22,
+		PWM: servoPWM,
+		Pin: servoPin,
 	}
 	stepsPerIncrement := nominalStepsPerIncrement(30, 9, 8, 4096)
 	calibrationCfg := device.CalibrationConfig{

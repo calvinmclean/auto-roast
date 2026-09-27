@@ -9,18 +9,36 @@ tasks:
 
   flash:
     aliases: ["f"]
+    desc: "Flash firmware: task flash -- [pico|xiao-rp2040] (default: pico)"
+    vars:
+      FIRMWARE_TARGET: '{{ .CLI_ARGS | default "pico" }}'
+    preconditions:
+      - sh: 'test "{{ .FIRMWARE_TARGET }}" = "pico" || test "{{ .FIRMWARE_TARGET }}" = "xiao-rp2040"'
+        msg: 'unsupported target {{ .FIRMWARE_TARGET }}; choose pico or xiao-rp2040'
     cmds:
-      - tinygo flash -target=pico ./firmware
+      - tinygo flash -target={{ .FIRMWARE_TARGET }} ./firmware
 
   flash-monitor:
     aliases: ["fm"]
+    desc: "Flash and monitor: task flash-monitor -- [pico|xiao-rp2040] (default: pico)"
+    vars:
+      FIRMWARE_TARGET: '{{ .CLI_ARGS | default "pico" }}'
+    preconditions:
+      - sh: 'test "{{ .FIRMWARE_TARGET }}" = "pico" || test "{{ .FIRMWARE_TARGET }}" = "xiao-rp2040"'
+        msg: 'unsupported target {{ .FIRMWARE_TARGET }}; choose pico or xiao-rp2040'
     cmds:
-      - tinygo flash -target=pico -monitor ./firmware
+      - tinygo flash -target={{ .FIRMWARE_TARGET }} -monitor ./firmware
 
   build:
     aliases: ["b"]
+    desc: "Build firmware: task build -- [pico|xiao-rp2040] (default: pico)"
+    vars:
+      FIRMWARE_TARGET: '{{ .CLI_ARGS | default "pico" }}'
+    preconditions:
+      - sh: 'test "{{ .FIRMWARE_TARGET }}" = "pico" || test "{{ .FIRMWARE_TARGET }}" = "xiao-rp2040"'
+        msg: 'unsupported target {{ .FIRMWARE_TARGET }}; choose pico or xiao-rp2040'
     cmds:
-      - tinygo build -o .build/auto-rost.elf -target=pico ./firmware
+      - tinygo build -o .build/auto-roast-{{ .FIRMWARE_TARGET }}.elf -target={{ .FIRMWARE_TARGET }} ./firmware
 
   run:
     aliases: ["r"]
