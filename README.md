@@ -1,12 +1,44 @@
 # Auto-Roast
 
-Auto-Roast is a software project designed to automate the control and monitoring of coffee roasting. It integrates with hardware components for precision control and supports automation scripts to replicate or fine-tune roast profiles.
+Automate your FreshRoast SR800 coffee roaster with free software, 3D-printed parts, and
+affordable electronics. TinyGo firmware interacts with the physical buttons on the coffee
+roaster using two small motors without any permanent modifications. A Fyne UI allows easy
+control from your laptop, complete with the ability to pre-program and replay previous
+roasts.
 
 ## Getting Started
 To get started with Auto-Roast, you'll need:
-- A compatible hardware setup (e.g., FreshRoast coffee roaster).
-- [Go](https://golang.org) installed (version 1.25.1 or later).
-- TinyGo for building and flashing the firmware.
+- FreshRoast SR800
+- Computer with Go and TinyGo installed
+- The following electronics and 3D printed parts
+
+## Bill of Materials
+
+| Quantity | Component | Use |
+| ---: | --- | --- |
+| 1 | XIAO RP2040 | Microcontroller. Chosen for its small size and USB-C port |
+| 1 | 28BYJ stepper motor | Precisely rotating the roaster's rotary encoder|
+| 1 | ULN2003 | Stepper motor driver |
+| 1 | Capacitor | Motor supply filtering. Not sure the best to use here. I used 100uF |
+| 1 | MG90S servo motor | Click the roaster's button |
+| 2 | M3 x 8 mm screws | Attach the stepper to the base |
+| 2 | M3 x 4 mm screws | Stepper attachment to the mount |
+| 2 | M3 x 8 mm countersunk screws | Stepper motor base attachment to the roaster. Must be countersunk! |
+| 1 | M3 x 4 mm screw | Add the bottom lid for the electronics compartment |
+
+### 3D-Printed Parts
+
+| Quantity | Part | Description |
+| ---: | --- | --- |
+| 1 | [SR800 controller base](https://github.com/calvinmclean/auto-roast/releases/download/stl-v1/SR800.Controller.Base.stl) | Mounts the assembly to the roaster and encloses electronics |
+| 1 | [Lid](https://github.com/calvinmclean/auto-roast/releases/download/stl-v1/Lid.stl) | Covers and protects the controller electronics |
+| 1 | [Motor gear](https://github.com/calvinmclean/auto-roast/releases/download/stl-v1/Motor.Gear.stl) | Transfers motion from the stepper motor to an encoder gear |
+| 1 | [Encoder gear](https://github.com/calvinmclean/auto-roast/releases/download/stl-v1/Encoder.Gear.stl) | Transfers rotation to the roaster's control encoders |
+| 1 | [Servo horn](https://github.com/calvinmclean/auto-roast/releases/download/stl-v1/Servo.Horn.stl) | Enables the servo motor to click a button |
+| 1 | [Servo strap](https://github.com/calvinmclean/auto-roast/releases/download/stl-v1/Servo.Strap.stl) | Secures the servo motor to the controller base |
+| 1 | [Stepper base](https://github.com/calvinmclean/auto-roast/releases/download/stl-v1/Stepper.Base.stl) | Secures the stepper motor to the controller assembly and aids in alignment |
+
+After printing these parts, careful assembly is required to route wires and fit all electronics in the enclosure. It depends a lot on wire size and has some tricky soldering.
 
 ## Features
 - **Serial Command Automation:** Automate command sequences, including pre-heat, pauses, and dynamic adjustments during roasting.
