@@ -37,6 +37,15 @@ func (t *timer) Set(start time.Time) {
 	t.mtx.Unlock()
 }
 
+// setForAdjustment leaves the clock untouched for milestones and other commands.
+func (t *timer) setForAdjustment(command string, now time.Time) (byte, float64, bool) {
+	setting, value, ok := settingValue(command)
+	if ok {
+		t.Set(now)
+	}
+	return setting, value, ok
+}
+
 func (t *timer) Stop() {
 	close(t.stop)
 }
@@ -57,6 +66,10 @@ func (t *timer) Go(waitForStart chan struct{}) {
 			}
 			fyne.Do(func() {
 				t.mtx.Lock()
+				if t.startTime.IsZero() {
+					t.mtx.Unlock()
+					return
+				}
 				elapsed := time.Since(t.startTime)
 				minutes := int(elapsed.Minutes())
 				seconds := int(elapsed.Seconds()) % 60

@@ -3,7 +3,6 @@ package ui
 import (
 	"context"
 	"fmt"
-	"image/color"
 	"io"
 	"math"
 	"os"
@@ -15,7 +14,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/calvinmclean/autoroast"
@@ -48,18 +46,20 @@ func alertHandler(window fyne.Window) func(message string) {
 
 func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool) {
 	application := app.NewWithID("auto.roast.calvinmclean.github.io")
+	application.Settings().SetTheme(newRoastTheme())
 
 	window := application.NewWindow("Auto Roast")
 
 	currentState := stateNone
 
 	overallTimer := newTimer(false)
-	lastEventTimer := newTimer(true)
+	adjustmentTimer := newTimer(true)
+	adjustmentTimer.text.Text = "—"
 	fcTimer := newTimer(true)
 
 	waitForStart := make(chan struct{})
 	overallTimer.Go(waitForStart)
-	lastEventTimer.Go(waitForStart)
+	adjustmentTimer.Go(waitForStart)
 
 	waitForFC := make(chan struct{})
 	fcTimer.Go(waitForFC)
@@ -79,7 +79,6 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	advanceState := func() {
 		currentState = currentState.next()
 
-		lastEventTimer.Set(time.Now())
 		refreshStateButton()
 
 		switch currentState {
@@ -87,7 +86,8 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			// reset the timer when roasting starts
 			overallTimer.Set(time.Now())
 		case stateFirstCrack:
-			fcTimer.text.Color = color.RGBA{R: 139, G: 0, B: 0, A: 255}
+			fcTimer.text.Color = roastCopper
+			fcTimer.text.Refresh()
 			fcTimer.Set(time.Now())
 			close(waitForFC)
 		case stateFirstCrack + 1:
@@ -97,13 +97,14 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			close(waitForStart)
 		case stateDone:
 			overallTimer.Stop()
-			lastEventTimer.Stop()
+			adjustmentTimer.Stop()
 		}
 	}
 	stateButton = widget.NewButton(currentState.next().String(), func() {
 		stateButton.Disable()
 		cw.RunStateCommand(currentState.next())
 	})
+	stateButton.Importance = widget.HighImportance
 	var setFanSlider, setPowerSlider func(float64)
 	applyCommand := func(command string) {
 		fyne.Do(func() {
@@ -114,8 +115,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 					refreshStateButton()
 				}
 			}
-			if setting, value, ok := settingValue(command); ok {
-				lastEventTimer.Set(time.Now())
+			if setting, value, ok := adjustmentTimer.setForAdjustment(command, time.Now()); ok {
 				if setting == 'F' {
 					setFanSlider(value)
 				} else {
@@ -276,6 +276,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	})
 
 	noteEntry := widget.NewEntry()
+	noteEntry.SetPlaceHolder("Add a roast note…")
 	noteEntry.OnSubmitted = func(s string) {
 		if s == "" {
 			return
@@ -294,21 +295,23 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	)
 
 	manualControls := container.NewVBox(
-		container.NewHBox(
-			container.NewPadded(overallTimer.text),
-			container.NewPadded(lastEventTimer.text),
-			layout.NewSpacer(),
-			container.NewPadded(fcTimer.text),
+		timerTile("ROAST TIME", overallTimer, true),
+		container.NewGridWithColumns(2,
+			timerTile("LAST ADJUSTMENT", adjustmentTimer, false),
+			timerTile("FIRST CRACK", fcTimer, false),
 		),
-		stateButton,
-		fanContainer,
-		powerContainer,
-		container.NewBorder(nil, nil, nil, noteButton, noteEntry),
-		buttonContainer,
+		roastPanel(container.NewVBox(
+			sectionTitle("Roaster controls"),
+			stateButton,
+			fanContainer,
+			powerContainer,
+			container.NewBorder(nil, nil, nil, noteButton, noteEntry),
+			buttonContainer,
+		)),
 	)
 	replayControls := container.NewBorder(
 		container.NewVBox(
-			widget.NewLabel("Planned Roast"),
+			sectionTitle("Planned Roast"),
 			container.NewBorder(nil, nil, nil, waitCountdown, replayStatus),
 			container.NewHBox(replayButton, skipReplayButton),
 			container.NewBorder(nil, nil, nil, addReplayButton, addReplayEntry),
@@ -319,9 +322,9 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		replayQueue,
 	)
 	leftPane := container.NewBorder(manualControls, nil, nil, nil, logAccordion)
-	roastSplit := container.NewHSplit(leftPane, replayControls)
+	roastSplit := container.NewHSplit(leftPane, roastPanel(replayControls))
 	roastSplit.SetOffset(0.45)
-	contentContainer := roastSplit
+	contentContainer := container.NewPadded(roastSplit)
 
 	go func() {
 		<-ctx.Done()
@@ -331,7 +334,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	}()
 
 	window.SetContent(contentContainer)
-	window.Resize(fyne.NewSize(880, 480))
+	window.Resize(fyne.NewSize(1000, 720))
 
 	// Show config window on startup
 	configWindow := NewConfigWindow(application)

@@ -23,7 +23,7 @@ type dragHandle struct {
 
 func newDragHandle(onDrop func(itemID, from, to int)) *dragHandle {
 	handle := &dragHandle{
-		text:   canvas.NewText("≡", nil),
+		text:   canvas.NewText("≡", roastMuted),
 		onDrop: onDrop,
 	}
 	handle.text.TextSize = 20
@@ -46,7 +46,11 @@ func (h *dragHandle) Dragged(event *fyne.DragEvent) {
 }
 
 func (h *dragHandle) DragEnd() {
-	offset := int(math.Round(float64(h.deltaY) / replayQueueRowHeight))
+	rowHeight := h.Size().Height
+	if rowHeight <= 0 {
+		rowHeight = replayQueueRowHeight
+	}
+	offset := int(math.Round(float64(h.deltaY / rowHeight)))
 	h.text.Move(h.original)
 	canvas.Refresh(h.text)
 	if offset != 0 {

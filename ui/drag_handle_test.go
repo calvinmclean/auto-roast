@@ -34,3 +34,15 @@ func TestDragHandleResetsAfterDrop(t *testing.T) {
 		t.Errorf("reset position = %v, want %v", got, want)
 	}
 }
+
+func TestDragHandleUsesRenderedRowHeight(t *testing.T) {
+	var gotTo int
+	handle := newDragHandle(func(_, _, to int) { gotTo = to })
+	handle.index = 1
+	handle.Resize(fyne.NewSize(24, 60))
+	handle.Dragged(&fyne.DragEvent{Dragged: fyne.Delta{DY: 120}})
+	handle.DragEnd()
+	if gotTo != 3 {
+		t.Errorf("drop target = %d, want 3", gotTo)
+	}
+}
