@@ -56,6 +56,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	adjustmentTimer := newTimer(true)
 	adjustmentTimer.text.Text = "—"
 	fcTimer := newTimer(true)
+	fcTimer.text.Text = "—"
 
 	waitForStart := make(chan struct{})
 	overallTimer.Go(waitForStart)
@@ -296,8 +297,8 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	)
 
 	manualControls := container.NewVBox(
-		timerTile("Roast time", overallTimer, true),
-		container.NewGridWithColumns(2,
+		container.NewGridWithColumns(3,
+			timerTile("", overallTimer, true),
 			timerTile("Last adjustment", adjustmentTimer, false),
 			timerTile("First crack", fcTimer, false),
 		),

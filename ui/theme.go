@@ -74,9 +74,6 @@ func sectionTitle(text string) *widget.Label {
 }
 
 func timerTile(label string, timer *timer, prominent bool) *fyne.Container {
-	caption := canvas.NewText(label, roastMuted)
-	caption.TextSize = 14
-	caption.TextStyle = fyne.TextStyle{Bold: true}
 	timer.text.Color = roastForeground
 	timer.text.TextStyle = fyne.TextStyle{Monospace: true}
 	timer.text.TextSize = 20
@@ -84,6 +81,12 @@ func timerTile(label string, timer *timer, prominent bool) *fyne.Container {
 		timer.text.Color = roastCopper
 		timer.text.TextSize = 32
 	}
+	if label == "" {
+		return roastPanel(container.NewCenter(timer.text))
+	}
+	caption := canvas.NewText(label, roastMuted)
+	caption.TextSize = 14
+	caption.TextStyle = fyne.TextStyle{Bold: true}
 	return roastPanel(container.NewVBox(caption, timer.text))
 }
 
