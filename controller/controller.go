@@ -105,6 +105,40 @@ func NewFromEnv() (Controller, error) {
 }
 
 func New(cfg Config) (Controller, error) {
+	return newWithTimeout(cfg, 5*time.Second, func(name string, mode *serial.Mode) (io.ReadWriteCloser, error) {
+		return serial.Open(name, mode)
+	})
+}
+
+func newWithTimeout(cfg Config, timeout time.Duration, open func(string, *serial.Mode) (io.ReadWriteCloser, error)) (Controller, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	type result struct {
+		controller Controller
+		err        error
+	}
+	results := make(chan result)
+	go func() {
+		c, err := initializeController(ctx, cfg, open)
+		select {
+		case results <- result{c, err}:
+		case <-ctx.Done():
+			_ = c.Close()
+		}
+	}()
+	select {
+	case r := <-results:
+		if ctx.Err() != nil {
+			_ = r.controller.Close()
+			return Controller{}, fmt.Errorf("connection initialization timed out after %s: %w", timeout, ctx.Err())
+		}
+		return r.controller, r.err
+	case <-ctx.Done():
+		return Controller{}, fmt.Errorf("connection initialization timed out after %s: %w", timeout, ctx.Err())
+	}
+}
+
+func initializeController(ctx context.Context, cfg Config, open func(string, *serial.Mode) (io.ReadWriteCloser, error)) (Controller, error) {
 	// Find default serial port if not set
 	if cfg.SerialPort == "" {
 		ports, err := GetSerialPorts()
@@ -127,10 +161,22 @@ func New(cfg Config) (Controller, error) {
 		port = &mockPort{}
 	} else {
 		var err error
-		port, err = serial.Open(cfg.SerialPort, mode)
+		port, err = open(cfg.SerialPort, mode)
 		if err != nil {
 			return Controller{}, fmt.Errorf("unexpected error opening serial connection: %w", err)
 		}
+	}
+	// Closing the port interrupts a stalled initialization read or write.
+	stopClose := context.AfterFunc(ctx, func() { _ = port.Close() })
+	success := false
+	defer func() {
+		stopClose()
+		if !success {
+			_ = port.Close()
+		}
+	}()
+	if err := ctx.Err(); err != nil {
+		return Controller{}, err
 	}
 
 	controller := Controller{port: port, twchartClient: noopTWChartClient{}, config: cfg}
@@ -153,6 +199,10 @@ func New(cfg Config) (Controller, error) {
 		controller.twchartClient = twchart.NewClient(cfg.TWChartAddr)
 	}
 
+	if err := ctx.Err(); err != nil {
+		return Controller{}, err
+	}
+	success = true
 	return controller, nil
 }
 

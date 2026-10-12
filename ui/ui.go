@@ -340,8 +340,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 
 	// Show config window on startup
 	configWindow := NewConfigWindow(application)
-	configWindow.OnSubmit = func() {
-		defer window.Show()
+	configWindow.OnSubmit = func(c controller.Controller, cfg controller.Config) error {
 
 		replay = nil
 		replayQueueItems = nil
@@ -351,8 +350,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			var err error
 			actions, err := controller.LoadReplay(cfg.RoastFile)
 			if err != nil {
-				showError(application, window, fmt.Errorf("error loading replay file: %w", err))
-				return
+				return fmt.Errorf("error loading replay file: %w", err)
 			}
 			replay = controller.NewReplay(actions, func(state controller.ReplayState) {
 				fyne.Do(func() {
@@ -410,12 +408,6 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 
 		setFanSlider(float64(cfg.InitialFanSetting))
 		setPowerSlider(float64(cfg.InitialPowerSetting))
-
-		c, err := controller.New(cfg)
-		if err != nil {
-			showError(application, window, fmt.Errorf("error creating controller: %w", err))
-			return
-		}
 
 		commandReader, commandWriter := io.Pipe()
 		controllerReader, controllerInputWriter := io.Pipe()
@@ -481,6 +473,8 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 			cancel()
 			_ = c.Close()
 		})
+		window.Show()
+		return nil
 	}
 	configWindow.Show(&cfg)
 

@@ -17,7 +17,7 @@ import (
 
 type ConfigWindow struct {
 	app      fyne.App
-	OnSubmit func()
+	OnSubmit func(controller.Controller, controller.Config) error
 }
 
 func NewConfigWindow(app fyne.App) *ConfigWindow {
@@ -64,14 +64,45 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	// Load config from preferences
 	cw.loadConfigFromPreferences(cfg)
 
-	submitButton := widget.NewButton("Submit", func() {
-		cw.saveConfigToPreferences(cfg)
-		cw.OnSubmit()
-		window.Close()
+	closed := false
+	window.SetOnClosed(func() { closed = true })
+	connecting := false
+	var validateForm func()
+	var submitButton *widget.Button
+	submitButton = widget.NewButton("Submit", func() {
+		connecting = true
+		submitButton.Disable()
+		submitButton.SetText("Connecting…")
+		snapshot := *cfg
+		go func() {
+			c, err := controller.New(snapshot)
+			fyne.Do(func() {
+				if closed {
+					go c.Close()
+					return
+				}
+				if err == nil {
+					err = cw.OnSubmit(c, snapshot)
+				}
+				if err != nil {
+					go c.Close()
+					connecting = false
+					submitButton.SetText("Submit")
+					validateForm()
+					fyneDialog.ShowError(err, window)
+					return
+				}
+				cw.saveConfigToPreferences(&snapshot)
+				window.Close()
+			})
+		}()
 	})
 	submitButton.Disable()
 
-	validateForm := func() {
+	validateForm = func() {
+		if connecting {
+			return
+		}
 		allFieldsValid := cfg.SerialPort != "" &&
 			cfg.SessionName != "" &&
 			cfg.ProbesInput != "" &&
@@ -82,6 +113,8 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 
 		if allFieldsValid {
 			submitButton.Enable()
+		} else {
+			submitButton.Disable()
 		}
 	}
 
@@ -94,13 +127,13 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	serialPorts = append(serialPorts, controller.SerialPortNone)
 
 	serialEntry := widget.NewSelect(serialPorts, func(s string) {
-		validateForm()
 		cfg.SerialPort = s
+		validateForm()
 	})
 	if cfg.SerialPort == "" {
 		cfg.SerialPort = serialPorts[0]
 	}
-	serialEntry.SetSelected(serialPorts[0])
+	serialEntry.SetSelected(cfg.SerialPort)
 
 	sessionEntry := widget.NewEntry()
 	sessionEntry.Bind(binding.BindString(&cfg.SessionName))
