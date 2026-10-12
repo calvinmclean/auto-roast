@@ -78,7 +78,7 @@ func timerTile(label string, timer *timer, prominent bool) *fyne.Container {
 	caption.TextSize = 14
 	caption.TextStyle = fyne.TextStyle{Bold: true}
 	timer.text.Color = roastForeground
-	timer.text.TextStyle = fyne.TextStyle{}
+	timer.text.TextStyle = fyne.TextStyle{Monospace: true}
 	timer.text.TextSize = 20
 	if prominent {
 		timer.text.Color = roastCopper
@@ -102,7 +102,7 @@ func (t *sizedTextTheme) Size(name fyne.ThemeSizeName) float32 {
 
 func replayStatusCard(status, countdown *widget.Label) (*fyne.Container, *fyne.Container) {
 	status.TextStyle = fyne.TextStyle{Bold: true}
-	countdown.TextStyle = fyne.TextStyle{Bold: true}
+	countdown.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	countdown.Importance = widget.HighImportance
 	remaining := container.NewVBox(
 		container.NewThemeOverride(countdown, &sizedTextTheme{Theme: newRoastTheme(), textSize: 20}),

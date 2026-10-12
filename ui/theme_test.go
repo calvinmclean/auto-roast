@@ -3,15 +3,25 @@ package ui
 import (
 	"testing"
 
-	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/sfnt"
 	"golang.org/x/image/math/fixed"
 )
 
-// Equal digit advances keep timer values stable without a monospace face.
+// Equal digit advances keep timer values stable as the clocks update.
 func TestTimerFontHasEqualDigitWidths(t *testing.T) {
-	face, err := sfnt.Parse(theme.DefaultTextFont().Content())
+	for _, style := range []fyne.TextStyle{{Monospace: true}, {Monospace: true, Bold: true}} {
+		resource := newRoastTheme().Font(style)
+		t.Run(resource.Name(), func(t *testing.T) {
+			checkDigitWidths(t, resource)
+		})
+	}
+}
+
+func checkDigitWidths(t *testing.T, resource fyne.Resource) {
+	t.Helper()
+	face, err := sfnt.Parse(resource.Content())
 	if err != nil {
 		t.Fatal(err)
 	}
