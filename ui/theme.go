@@ -27,7 +27,11 @@ func (t *roastTheme) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color.
 	switch name {
 	case theme.ColorNameBackground, theme.ColorNameInputBackground:
 		return roastBackground
-	case theme.ColorNameButton, theme.ColorNameHeaderBackground, theme.ColorNameMenuBackground, theme.ColorNameOverlayBackground:
+	case theme.ColorNameButton:
+		return color.NRGBA{R: 83, G: 67, B: 55, A: 255}
+	case theme.ColorNameDisabledButton:
+		return color.NRGBA{R: 49, G: 43, B: 38, A: 255}
+	case theme.ColorNameHeaderBackground, theme.ColorNameMenuBackground, theme.ColorNameOverlayBackground:
 		return roastSurface
 	case theme.ColorNameForeground:
 		return roastForeground
@@ -71,13 +75,44 @@ func sectionTitle(text string) *widget.Label {
 
 func timerTile(label string, timer *timer, prominent bool) *fyne.Container {
 	caption := canvas.NewText(label, roastMuted)
-	caption.TextSize = 12
+	caption.TextSize = 14
+	caption.TextStyle = fyne.TextStyle{Bold: true}
 	timer.text.Color = roastForeground
-	timer.text.TextStyle = fyne.TextStyle{Monospace: true}
+	timer.text.TextStyle = fyne.TextStyle{}
 	timer.text.TextSize = 20
 	if prominent {
 		timer.text.Color = roastCopper
 		timer.text.TextSize = 32
 	}
 	return roastPanel(container.NewVBox(caption, timer.text))
+}
+
+// sizedTextTheme changes label size within a specific container.
+type sizedTextTheme struct {
+	fyne.Theme
+	textSize float32
+}
+
+func (t *sizedTextTheme) Size(name fyne.ThemeSizeName) float32 {
+	if name == theme.SizeNameText {
+		return t.textSize
+	}
+	return t.Theme.Size(name)
+}
+
+func replayStatusCard(status, countdown *widget.Label) (*fyne.Container, *fyne.Container) {
+	status.TextStyle = fyne.TextStyle{Bold: true}
+	countdown.TextStyle = fyne.TextStyle{Bold: true}
+	countdown.Importance = widget.HighImportance
+	remaining := container.NewVBox(
+		container.NewThemeOverride(countdown, &sizedTextTheme{Theme: newRoastTheme(), textSize: 20}),
+	)
+	remaining.Hide()
+	background := canvas.NewRectangle(roastBackground)
+	background.CornerRadius = 8
+	card := container.NewStack(background, container.NewPadded(container.NewBorder(
+		nil, nil, nil, remaining,
+		container.NewThemeOverride(status, &sizedTextTheme{Theme: newRoastTheme(), textSize: 14}),
+	)))
+	return card, remaining
 }

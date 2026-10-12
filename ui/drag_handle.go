@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -12,7 +13,7 @@ const replayQueueRowHeight = 36
 
 type dragHandle struct {
 	widget.BaseWidget
-	text     *canvas.Text
+	icon     *canvas.Image
 	itemID   int
 	index    int
 	deltaY   float32
@@ -22,27 +23,30 @@ type dragHandle struct {
 }
 
 func newDragHandle(onDrop func(itemID, from, to int)) *dragHandle {
+	resource := fyne.NewStaticResource("drag-handle.svg", []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><g fill="#000"><circle cx="7" cy="5" r="1.5"/><circle cx="13" cy="5" r="1.5"/><circle cx="7" cy="10" r="1.5"/><circle cx="13" cy="10" r="1.5"/><circle cx="7" cy="15" r="1.5"/><circle cx="13" cy="15" r="1.5"/></g></svg>`))
+	icon := canvas.NewImageFromResource(theme.NewColoredResource(resource, theme.ColorNamePlaceHolder))
+	icon.FillMode = canvas.ImageFillContain
+	icon.SetMinSize(fyne.NewSize(20, 20))
 	handle := &dragHandle{
-		text:   canvas.NewText("≡", roastMuted),
+		icon:   icon,
 		onDrop: onDrop,
 	}
-	handle.text.TextSize = 20
 	handle.ExtendBaseWidget(handle)
 	return handle
 }
 
 func (h *dragHandle) CreateRenderer() fyne.WidgetRenderer {
-	return widget.NewSimpleRenderer(h.text)
+	return widget.NewSimpleRenderer(h.icon)
 }
 
 func (h *dragHandle) Dragged(event *fyne.DragEvent) {
 	if !h.dragging {
-		h.original = h.text.Position()
+		h.original = h.icon.Position()
 		h.dragging = true
 	}
 	h.deltaY += event.Dragged.DY
-	h.text.Move(h.original.Add(fyne.NewDelta(0, h.deltaY)))
-	canvas.Refresh(h.text)
+	h.icon.Move(h.original.Add(fyne.NewDelta(0, h.deltaY)))
+	canvas.Refresh(h.icon)
 }
 
 func (h *dragHandle) DragEnd() {
@@ -51,8 +55,8 @@ func (h *dragHandle) DragEnd() {
 		rowHeight = replayQueueRowHeight
 	}
 	offset := int(math.Round(float64(h.deltaY / rowHeight)))
-	h.text.Move(h.original)
-	canvas.Refresh(h.text)
+	h.icon.Move(h.original)
+	canvas.Refresh(h.icon)
 	if offset != 0 {
 		h.onDrop(h.itemID, h.index, h.index+offset)
 	}

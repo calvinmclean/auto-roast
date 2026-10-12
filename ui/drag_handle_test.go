@@ -23,14 +23,14 @@ func TestDragHandleMovesByRows(t *testing.T) {
 
 func TestDragHandleResetsAfterDrop(t *testing.T) {
 	handle := newDragHandle(func(int, int, int) {})
-	handle.text.Move(fyne.NewPos(4, 8))
+	handle.icon.Move(fyne.NewPos(4, 8))
 	handle.Dragged(&fyne.DragEvent{Dragged: fyne.Delta{DY: replayQueueRowHeight}})
-	if got, want := handle.text.Position(), fyne.NewPos(4, 8+replayQueueRowHeight); got != want {
+	if got, want := handle.icon.Position(), fyne.NewPos(4, 8+replayQueueRowHeight); got != want {
 		t.Errorf("dragged position = %v, want %v", got, want)
 	}
 
 	handle.DragEnd()
-	if got, want := handle.text.Position(), fyne.NewPos(4, 8); got != want {
+	if got, want := handle.icon.Position(), fyne.NewPos(4, 8); got != want {
 		t.Errorf("reset position = %v, want %v", got, want)
 	}
 }

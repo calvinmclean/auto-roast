@@ -150,7 +150,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	replayStatus := widget.NewLabel("Manual control")
 	replayStatus.Wrapping = fyne.TextWrapWord
 	waitCountdown := widget.NewLabel("")
-	waitCountdown.Hide()
+	statusCard, remainingTime := replayStatusCard(replayStatus, waitCountdown)
 	var waitCountdownCancel context.CancelFunc
 	var waitCountdownID uint
 	updateWaitCountdown := func(waitUntil time.Time) {
@@ -161,11 +161,12 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 		}
 		if waitUntil.IsZero() {
 			waitCountdown.SetText("")
-			waitCountdown.Hide()
+			remainingTime.Hide()
 			return
 		}
 
-		waitCountdown.Show()
+		waitCountdown.SetText(formatWaitRemaining(time.Until(waitUntil)))
+		remainingTime.Show()
 		countdownCtx, cancelCountdown := context.WithCancel(ctx)
 		waitCountdownCancel = cancelCountdown
 		go func() {
@@ -295,10 +296,10 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	)
 
 	manualControls := container.NewVBox(
-		timerTile("ROAST TIME", overallTimer, true),
+		timerTile("Roast time", overallTimer, true),
 		container.NewGridWithColumns(2,
-			timerTile("LAST ADJUSTMENT", adjustmentTimer, false),
-			timerTile("FIRST CRACK", fcTimer, false),
+			timerTile("Last adjustment", adjustmentTimer, false),
+			timerTile("First crack", fcTimer, false),
 		),
 		roastPanel(container.NewVBox(
 			sectionTitle("Roaster controls"),
@@ -311,8 +312,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 	)
 	replayControls := container.NewBorder(
 		container.NewVBox(
-			sectionTitle("Planned Roast"),
-			container.NewBorder(nil, nil, nil, waitCountdown, replayStatus),
+			statusCard,
 			container.NewHBox(replayButton, skipReplayButton),
 			container.NewBorder(nil, nil, nil, addReplayButton, addReplayEntry),
 		),
@@ -335,6 +335,7 @@ func (ui *RoasterUI) Run(ctx context.Context, cfg controller.Config, debug bool)
 
 	window.SetContent(contentContainer)
 	window.Resize(fyne.NewSize(1000, 720))
+	window.CenterOnScreen()
 
 	// Show config window on startup
 	configWindow := NewConfigWindow(application)

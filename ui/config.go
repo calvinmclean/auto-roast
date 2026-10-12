@@ -53,6 +53,7 @@ func (cw *ConfigWindow) saveConfigToPreferences(cfg *controller.Config) {
 func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	window := cw.app.NewWindow("Auto Roast - Configuration")
 	window.Resize(fyne.NewSize(450, 300))
+	window.CenterOnScreen()
 	window.SetCloseIntercept(func() {
 		// Treat window close as cancel
 		window.Close()
