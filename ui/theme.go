@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -71,6 +72,14 @@ func roastPanel(content fyne.CanvasObject) *fyne.Container {
 
 func sectionTitle(text string) *widget.Label {
 	return widget.NewLabelWithStyle(text, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+}
+
+func outlinedSelect(selectWidget *widget.Select) *fyne.Container {
+	border := canvas.NewRectangle(newRoastTheme().Color(theme.ColorNameInputBorder, theme.VariantDark))
+	border.CornerRadius = 6
+	return container.NewStack(border,
+		container.New(layout.NewCustomPaddedLayout(1, 1, 1, 1), selectWidget),
+	)
 }
 
 func timerTile(label string, timer *timer, prominent bool) *fyne.Container {

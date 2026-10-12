@@ -165,7 +165,7 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 	powerEntry.SetSelected(strconv.Itoa(cfg.InitialPowerSetting))
 	powerEntry.Resize(fyne.NewSize(60, powerEntry.MinSize().Height))
 
-	initSettingsEntries := container.NewHBox(fanEntry, powerEntry)
+	initSettingsEntries := container.NewHBox(outlinedSelect(fanEntry), outlinedSelect(powerEntry))
 	initSettingsEntries.Resize(fyne.NewSize(120, initSettingsEntries.MinSize().Height))
 
 	roastFileLabel := widget.NewLabel(roastFileDisplay(cfg.RoastFile))
@@ -200,7 +200,7 @@ func (cw *ConfigWindow) Show(cfg *controller.Config) {
 		widget.NewCard("Configuration", "", container.NewVBox(
 			container.NewGridWithColumns(2,
 				widget.NewLabel("Serial Port:"),
-				serialEntry,
+				outlinedSelect(serialEntry),
 			),
 			container.NewGridWithColumns(2,
 				widget.NewLabel("Baud Rate:"),
