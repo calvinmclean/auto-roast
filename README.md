@@ -6,6 +6,8 @@ roaster using two small motors without any permanent modifications. A Fyne UI al
 control from your laptop, complete with the ability to pre-program and replay previous
 roasts.
 
+![Auto-Roast UI showing roast timers, fan and power controls, and a planned roast queue](docs/images/auto-roast-ui.png)
+
 ## Getting Started
 To get started with Auto-Roast, you'll need:
 - FreshRoast SR800
